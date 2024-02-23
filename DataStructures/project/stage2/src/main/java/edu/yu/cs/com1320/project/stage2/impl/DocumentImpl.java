@@ -2,6 +2,7 @@ package edu.yu.cs.com1320.project.stage2.impl;
 
 
 
+import edu.yu.cs.com1320.project.impl.HashTableImpl;
 import edu.yu.cs.com1320.project.stage2.Document;
 
 import java.net.URI;
@@ -13,7 +14,7 @@ public class DocumentImpl implements Document {
     private URI uri;
     private String txt;
     private byte[] binaryData;
-    private HashTableImpl <String, String> meta;
+    private HashTableImpl<String, String> meta;
 
 
 

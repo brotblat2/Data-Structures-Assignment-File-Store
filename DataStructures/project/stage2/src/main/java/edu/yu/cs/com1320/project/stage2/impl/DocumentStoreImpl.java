@@ -3,8 +3,8 @@ package edu.yu.cs.com1320.project.stage2.impl;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
-import java.util.HashMap;
 
+import edu.yu.cs.com1320.project.impl.HashTableImpl;
 import edu.yu.cs.com1320.project.stage2.Document;
 import edu.yu.cs.com1320.project.stage2.DocumentStore;
 

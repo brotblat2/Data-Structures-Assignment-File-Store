@@ -2,6 +2,8 @@ package edu.yu.cs.com1320.project.stage2.impl;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.HashMap;
+
+import edu.yu.cs.com1320.project.impl.HashTableImpl;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -90,7 +92,7 @@ class DocumentImplTest {
         doc.setMetadataValue("key1" , "okey dokey");
         doc.setMetadataValue("key2", "okey dokey");
 
-        HashTableImpl <String, String> htable= doc.getMetadata();
+        HashTableImpl<String, String> htable= doc.getMetadata();
         doc.setMetadataValue("key1", "switched it");
         assertEquals(htable.size(), doc.getMetadata().size());
     }

@@ -1,4 +1,4 @@
-package edu.yu.cs.com1320.project.stage2.impl;
+package edu.yu.cs.com1320.project.impl;
 
 import org.junit.jupiter.api.Test;
 
@@ -8,7 +8,8 @@ class HashTableImplTest {
     @Test
     void getCheck() {
         HashTableImpl<Integer, String> hash=new HashTableImpl<>();
-        
+        hash.put(1, "Hi");
+        assertEquals(hash.get(1), "Hi");
 
     }
 
