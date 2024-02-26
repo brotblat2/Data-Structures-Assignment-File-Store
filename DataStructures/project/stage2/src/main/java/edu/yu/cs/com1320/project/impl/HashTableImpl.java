@@ -10,7 +10,7 @@ public class HashTableImpl <Key, Value> implements HashTable<Key, Value>{
         private K key;
         private V value;
 
-        public Linker<K, V> next;
+        private Linker<K, V> next;
 
 
         public Linker (K key, V value){
