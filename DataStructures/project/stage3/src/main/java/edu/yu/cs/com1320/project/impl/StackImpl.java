@@ -15,6 +15,9 @@ public class StackImpl <T>implements Stack<T> {
     }
     @Override
     public void push(T element){
+        if (element==null)
+            throw new IllegalArgumentException("null input into the stack");
+
         if(top == stackArray.length - 1){
             T[] copy =(T[])new Object[2*stackArray.length];
             for (int i=0; i<stackArray.length;i++){

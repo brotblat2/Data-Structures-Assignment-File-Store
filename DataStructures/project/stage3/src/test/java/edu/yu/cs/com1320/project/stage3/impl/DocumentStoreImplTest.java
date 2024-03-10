@@ -64,10 +64,12 @@ class DocumentStoreImplTest {
         assertEquals((dstore.getMetadata(uri1,"key")), "value");
     }
     @Test
-    void setMetadataChseck() throws IOException {
+    void StamUndo() throws IOException {
         URI uri = URI.create("http://fox.com");
 
         URI uri1 = URI.create("http://cnn.com");
+        URI uri11 = URI.create("http://cnn.com");
+
         URI uri2 = URI.create("http://google.com");
         URI uri3 = URI.create("http://googledocs.com");
 
@@ -91,11 +93,136 @@ class DocumentStoreImplTest {
         dstore.setMetadata(uri1, "key", "value1" );
         dstore.setMetadata(uri1, "key", "value2" );
         dstore.put(stream2, uri, DocumentStore.DocumentFormat.BINARY );
-        dstore.undo(uri1);
+        dstore.delete(uri2);
         dstore.undo();
-        assertEquals((dstore.getMetadata(uri1,"value1")), null);
+        dstore.undo();
+        dstore.undo();
+        dstore.undo();
+        dstore.undo();
+        dstore.undo();
+        dstore.undo();
+        dstore.undo();
+        assertNull((dstore.get(uri3)));
     }
 
+    @Test
+    void undo0() throws IOException {
+        URI uri = URI.create("http://fox.com");
+
+        URI uri1 = URI.create("http://cnn.com");
+        URI uri11 = URI.create("http://cnn.com");
+
+        URI uri2 = URI.create("http://google.com");
+        URI uri3 = URI.create("http://googledocs.com");
+
+        byte[] b8 = {11, 28, 23, 40};
+        ByteArrayInputStream stream8 = new ByteArrayInputStream(b8);
+
+        byte[] b = {1, 2, 3, 4};
+
+        byte[] b1 = {41, 42, 43, 44, 45};
+        byte[] b2 = {91, 92, 93, 94, 95};
+        ByteArrayInputStream stream = new ByteArrayInputStream(b);
+        ByteArrayInputStream stream1 = new ByteArrayInputStream(b1);
+        ByteArrayInputStream stream2 = new ByteArrayInputStream(b2);
+        ByteArrayInputStream stream3 = new ByteArrayInputStream(b2);
+
+        DocumentStoreImpl dstore=new DocumentStoreImpl();
+        dstore.put(stream1, uri1, DocumentStore.DocumentFormat.BINARY );
+        dstore.put(stream, uri, DocumentStore.DocumentFormat.BINARY );
+        dstore.put(stream2, uri2, DocumentStore.DocumentFormat.BINARY );
+        dstore.undo(uri1);
+        assertNull((dstore.get(uri1)));
+    }
+
+    @Test
+    void undo1() throws IOException {
+        URI uri = URI.create("http://fox.com");
+        URI uri1 = URI.create("http://cnn.com");
+        URI uri3 = URI.create("http://googledocs.com");
+
+
+        byte[] b = {1, 2, 3, 4};
+        byte[] b1 = {41, 42, 43, 44, 45};
+        byte[] b2 = {91, 92, 93, 94, 95};
+        ByteArrayInputStream stream = new ByteArrayInputStream(b);
+        ByteArrayInputStream stream1 = new ByteArrayInputStream(b1);
+        ByteArrayInputStream stream2 = new ByteArrayInputStream(b2);
+
+        DocumentStoreImpl dstore=new DocumentStoreImpl();
+        dstore.put(stream1, uri1, DocumentStore.DocumentFormat.BINARY );
+        dstore.setMetadata(uri1, "key", "value1" );
+        dstore.setMetadata(uri1, "key", "value2" );
+        dstore.put(stream, uri, DocumentStore.DocumentFormat.BINARY );
+        dstore.put(stream2, uri3, DocumentStore.DocumentFormat.BINARY );
+
+        dstore.undo(uri1);
+        assertEquals( "value1", dstore.getMetadata(uri1, "key"));
+    }
+    @Test
+    void undo2() throws IOException {
+        URI uri = URI.create("http://fox.com");
+
+        URI uri1 = URI.create("http://cnn.com");
+        URI uri11 = URI.create("http://cnn.com");
+
+        URI uri2 = URI.create("http://google.com");
+        URI uri3 = URI.create("http://googledocs.com");
+
+        byte[] b8 = {11, 28, 23, 40};
+        ByteArrayInputStream stream8 = new ByteArrayInputStream(b8);
+
+        byte[] b = {1, 2, 3, 4};
+
+        byte[] b1 = {41, 42, 43, 44, 45};
+        byte[] b2 = {91, 92, 93, 94, 95};
+        ByteArrayInputStream stream = new ByteArrayInputStream(b);
+        ByteArrayInputStream stream1 = new ByteArrayInputStream(b1);
+        ByteArrayInputStream stream2 = new ByteArrayInputStream(b2);
+        ByteArrayInputStream stream3 = new ByteArrayInputStream(b2);
+
+        DocumentStoreImpl dstore=new DocumentStoreImpl();
+        dstore.put(stream1, uri1, DocumentStore.DocumentFormat.BINARY );
+        dstore.put(stream, uri, DocumentStore.DocumentFormat.BINARY );
+        dstore.put(stream8, uri2, DocumentStore.DocumentFormat.BINARY );
+        dstore.put(stream3, uri3, DocumentStore.DocumentFormat.BINARY );
+        dstore.setMetadata(uri1, "key", "value1" );
+        dstore.setMetadata(uri1, "key", "value2" );
+        dstore.put(stream2, uri, DocumentStore.DocumentFormat.BINARY );
+        dstore.delete(uri3);
+        dstore.undo(uri3);
+        assertNotNull((dstore.get(uri3)));
+    }
+    @Test
+    void undo3() throws IOException {
+        URI uri = URI.create("http://fox.com");
+        URI uri1 = URI.create("http://cnn.com");
+        URI uri11 = URI.create("http://cnn.com");
+        URI uri2 = URI.create("http://google.com");
+        URI uri3 = URI.create("http://googledocs.com");
+        byte[] b8 = {11, 28, 23, 40};
+        ByteArrayInputStream stream8 = new ByteArrayInputStream(b8);
+
+        byte[] b = {1, 2, 3, 4};
+
+        byte[] b1 = {41, 42, 43, 44, 45};
+        byte[] b2 = {91, 92, 93, 94, 95};
+        ByteArrayInputStream stream = new ByteArrayInputStream(b);
+        ByteArrayInputStream stream1 = new ByteArrayInputStream(b1);
+        ByteArrayInputStream stream2 = new ByteArrayInputStream(b2);
+        ByteArrayInputStream stream3 = new ByteArrayInputStream(b2);
+
+        DocumentStoreImpl dstore=new DocumentStoreImpl();
+        dstore.put(stream1, uri1, DocumentStore.DocumentFormat.BINARY );
+        dstore.put(stream, uri, DocumentStore.DocumentFormat.BINARY );
+        dstore.put(stream8, uri2, DocumentStore.DocumentFormat.BINARY );
+        dstore.put(stream3, uri3, DocumentStore.DocumentFormat.BINARY );
+        dstore.setMetadata(uri1, "key", "value1" );
+        dstore.setMetadata(uri1, "key", "value2" );
+        dstore.put(stream2, uri, DocumentStore.DocumentFormat.BINARY );
+        dstore.undo(uri3);
+        assertNull((dstore.get(uri3)));
+    }
     @Test
     void setMetadataCheck1() throws IOException {
         URI uri = URI.create("http://fox.com");

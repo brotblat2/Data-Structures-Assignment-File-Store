@@ -181,7 +181,8 @@ public class DocumentStoreImpl implements DocumentStore {
                 temp.push(commandStack.pop());
             }
             else{
-               Command undone=commandStack.pop();
+               commandStack.pop().undo();
+               break;
             }
         }
         while (temp.peek()!=null){
