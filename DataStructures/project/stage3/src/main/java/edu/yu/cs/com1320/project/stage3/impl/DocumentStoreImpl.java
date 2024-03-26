@@ -95,7 +95,6 @@ public class DocumentStoreImpl implements DocumentStore {
         if (format==null){
             throw new IllegalArgumentException("Null Format");
         }
-
         //Return Value and acting as delete
         int x;
         if (input==null){
@@ -114,13 +113,12 @@ public class DocumentStoreImpl implements DocumentStore {
         else{
             x= store.get(uri).hashCode();
         }
-
         //Actual implementation
         if (format==DocumentFormat.BINARY){
             byte[] b = input.readAllBytes();
             DocumentImpl d= new DocumentImpl(uri, b);
             DocumentImpl doc=this.store.put(uri, d);
-            Consumer <URI> u = (squash) -> {
+            Consumer <URI> u = (URI squash) -> {
                 this.store.put(uri, doc);
             };
             Command com=new Command(uri, u);
@@ -139,7 +137,6 @@ public class DocumentStoreImpl implements DocumentStore {
             commandStack.push(com);
         }
         return x;
-
     }
 
     /**
@@ -169,6 +166,10 @@ public class DocumentStoreImpl implements DocumentStore {
 
     @Override
     public void undo() throws IllegalStateException {
+        //fixed from old assignment
+        if (commandStack.size()==0){
+            throw new IllegalStateException();
+        }
         Command c= commandStack.pop();
         c.undo();
     }
@@ -176,17 +177,24 @@ public class DocumentStoreImpl implements DocumentStore {
     @Override
     public void undo(URI url) throws IllegalStateException {
         StackImpl<Command> temp=new StackImpl<>();
+        boolean found=false;
         while (commandStack.peek()!=null){
             if (!(commandStack.peek().getUri().toString().equals(url.toString()))){
                 temp.push(commandStack.pop());
             }
             else{
-               commandStack.pop().undo();
-               break;
+                commandStack.pop().undo();
+                found=true;
+                break;
             }
         }
+        if (!found){
+            throw new IllegalStateException();
+        }
+
         while (temp.peek()!=null){
             commandStack.push(temp.pop());
         }
-        }
+
+    }
 }

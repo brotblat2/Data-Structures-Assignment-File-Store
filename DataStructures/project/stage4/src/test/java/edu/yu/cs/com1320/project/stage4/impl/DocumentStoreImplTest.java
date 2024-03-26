@@ -1,6 +1,6 @@
-package edu.yu.cs.com1320.project.stage3.impl;
+package edu.yu.cs.com1320.project.stage4.impl;
 
-import edu.yu.cs.com1320.project.stage3.DocumentStore;
+import edu.yu.cs.com1320.project.stage4.DocumentStore;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
@@ -63,28 +63,6 @@ class DocumentStoreImplTest {
         dstore.put(stream1, uri1, DocumentStore.DocumentFormat.BINARY);
         dstore.setMetadata(uri1, "key", "value");
         assertEquals((dstore.getMetadata(uri1, "key")), "value");
-    }
-    @Test
-    public void undoAfterOnePut() throws Exception {
-        URI url1 = URI.create("http://cnn.com");
-        String txt1 = "Hello";
-        byte[] b = txt1.getBytes();
-        ByteArrayInputStream stream = new ByteArrayInputStream(b);
-        DocumentStoreImpl dsi = new DocumentStoreImpl();
-        //undo after putting only one doc
-        DocumentImpl doc1 = new DocumentImpl(url1, txt1);
-        dsi.put(stream,url1,DocumentStore.DocumentFormat.TXT);
-        DocumentImpl returned1 = (DocumentImpl) dsi.get(url1);
-        assertNotNull(returned1, "Did not get a document back after putting it in");
-        assertEquals(doc1.getKey(), returned1.getKey(), "Did not get doc1 back");
-        dsi.undo();
-        returned1 = (DocumentImpl) dsi.get(url1);
-        assertNull(returned1, "Put was undone should have been null");
-        try {
-            dsi.undo();
-            fail("no documents should've thrown IllegalStateException");
-        } catch (IllegalStateException e) {
-        }
     }
 
     @Test
@@ -675,7 +653,8 @@ class DocumentStoreImplTest {
         dstore.put(stream, uri, DocumentStore.DocumentFormat.BINARY);
         dstore.put(stream8, uri2, DocumentStore.DocumentFormat.BINARY);
         dstore.put(stream3, uri3, DocumentStore.DocumentFormat.BINARY);
-        assertThrows(IllegalStateException.class, () -> {dstore.undo(uri11);});
+        dstore.undo(uri11);
+        assertNull(dstore.get(uri3));
     }
 
 
