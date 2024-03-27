@@ -123,12 +123,9 @@ public class DocumentImpl implements Document {
     //strips out non-alpha chars and splits based on spaces. Iterate thru array and add to hashtable
     private HashMap <String, Integer> wordCountTable(){
         String fixed= txt;
-        HashSet<Integer> set= numberSet();
-        for ( int i: set) {
-            char ch = (char) i;
-            String s = "" + ch;
-            fixed = txt.replace( s, "");
-        }
+
+        fixed = fixed.replaceAll("[^a-zA-Z0-9 ]", "");
+
         String[] words= fixed.split(" ");
         HashMap<String, Integer> hash= new HashMap<>();
         for (String s: words){
@@ -141,6 +138,7 @@ public class DocumentImpl implements Document {
                 hash.put(s, val+1);
             }
         }
+        hash.remove("");
         return hash;
     }
     /**

@@ -167,13 +167,15 @@ public class DocumentStoreImpl implements DocumentStore {
         if (this.store.get(url)==null){
             return false;
         }
-        DocumentImpl doc= this.store.put(url, null);
+
         //NEED TO DELETE FROM THE TRIE
         Set<String> words=this.store.get(url).getWords();
         for(String word:words){
             documentTrie.delete(word, this.store.get(url));
         }
-            Consumer <URI> u = (squash) -> {
+
+        DocumentImpl doc= this.store.put(url, null);
+        Consumer <URI> u = (squash) -> {
                this.store.put(url, doc);
             };
             Command com=new Command(url, u);
@@ -257,10 +259,12 @@ public class DocumentStoreImpl implements DocumentStore {
     @Override
     public Set<URI> deleteAll(String keyword) {
         Set<Document> oldDocs= documentTrie.get(keyword);
-        documentTrie.deleteAll(keyword);
         Set<URI> oldUris= new HashSet<>();
         for(Document d:oldDocs){
             oldUris.add(d.getKey());
+            for (String s:d.getWords()){
+                documentTrie.delete(s,d);
+            }
         }
         for(URI u:oldUris){
             this.privateDeleteFromTable(u);
@@ -275,17 +279,19 @@ public class DocumentStoreImpl implements DocumentStore {
      * @param keywordPrefix
      * @return a Set of URIs of the documents that were deleted.
      */
+    //UP TO HERE!!!!!!!!!
     @Override
     public Set<URI> deleteAllWithPrefix(String keywordPrefix) {
-        List<Document> oldDocs=documentTrie.getAllWithPrefixSorted(keywordPrefix,new DocumentComparatorPrefix(keywordPrefix));
-        documentTrie.deleteAllWithPrefix(keywordPrefix);
+        Set<Document> oldDocs=documentTrie.deleteAllWithPrefix(keywordPrefix);
         Set<URI> oldUris= new HashSet<>();
         for(Document d:oldDocs){
             oldUris.add(d.getKey());
+            for (String s:d.getWords()){
+                documentTrie.delete(s,d);
+            }
+            this.privateDeleteFromTable(d.getKey());
         }
-        for(URI u:oldUris){
-            this.privateDeleteFromTable(u);
-        }
+
         return oldUris;
     }
 
@@ -296,19 +302,20 @@ public class DocumentStoreImpl implements DocumentStore {
     @Override
     public List<Document> searchByMetadata(Map<String, String> keysValues) {
         List<Document> docsList=documentTrie.getAllWithPrefixSorted("", new DocumentComparatorPrefix(""));
-        Set<Document> set=new HashSet<>();
+        Set<Document> docSet=new HashSet<>();
         for(Document d:docsList){
             boolean has=true;
             for (String s:keysValues.keySet()){
-                if (!(d.getMetadata().containsKey(s)&& keysValues.get(s).equals(d.getMetadataValue(s)))){
+                if (!(d.getMetadata().containsKey(s) && keysValues.get(s).equals(d.getMetadataValue(s)))){
                     has=false;
                     break;
                 }
             }
-            if (has) set.add(d);
+            if (has) docSet.add(d);
         }
-        docsList.addAll(set);
-        return docsList;
+        ;
+        List<Document> returnList=new ArrayList<>(docSet);
+        return returnList;
     }
     /**
      * Retrieve all documents whose text contains the given keyword AND which has the given key-value pairs in its metadata
@@ -321,13 +328,16 @@ public class DocumentStoreImpl implements DocumentStore {
     @Override
     public List<Document> searchByKeywordAndMetadata(String keyword, Map<String, String> keysValues) {
         List<Document> docsList=searchByMetadata(keysValues);
+        if(docsList==null || docsList.isEmpty()) return new ArrayList<>();
         List<Document> list=search(keyword);
-        for(Document doc:list){
-            if (!docsList.contains(doc)){
-                list.remove(doc);
+        if(list==null || list.isEmpty()) return new ArrayList<>();
+
+        for (Document doc : new ArrayList<>(docsList)) {
+            if (!list.contains(doc)) {
+                docsList.remove(doc);
             }
         }
-        return list;
+        return docsList;
     }
     /**
      * Retrieve all documents that contain text which starts with the given prefix AND which has the given key-value pairs in its metadata
@@ -340,12 +350,13 @@ public class DocumentStoreImpl implements DocumentStore {
     public List<Document> searchByPrefixAndMetadata(String keywordPrefix, Map<String, String> keysValues) {
         List<Document> docsList=searchByMetadata(keysValues);
         List<Document> list=searchByPrefix(keywordPrefix);
-        for(Document doc:list){
-            if (!docsList.contains(doc)){
-                list.remove(doc);
+
+        for (Document doc : new ArrayList<>(docsList)) {
+            if (!list.contains(doc)) {
+                docsList.remove(doc);
             }
         }
-        return list;
+        return docsList;
     }
     /**
      * Completely remove any trace of any document which has the given key-value pairs in its metadata
@@ -414,7 +425,7 @@ public class DocumentStoreImpl implements DocumentStore {
         }
         @Override
         public int compare(Document o1, Document o2) {
-            return Integer.compare( o2.wordCount(word),o1.wordCount(word));
+            return Integer.compare( o1.wordCount(word),o2.wordCount(word))*-1;
         }
     }
     private class DocumentComparatorPrefix implements Comparator<Document> {
@@ -437,7 +448,7 @@ public class DocumentStoreImpl implements DocumentStore {
                 }
             }
 
-            return Integer.compare(b, a);
+            return Integer.compare(a,b)*-1;
         }
     }
 }

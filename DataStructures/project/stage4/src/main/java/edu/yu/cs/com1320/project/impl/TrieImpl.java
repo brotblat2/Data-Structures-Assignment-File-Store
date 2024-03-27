@@ -124,8 +124,10 @@ public class TrieImpl <Value> implements Trie<Value> {
             return new ArrayList<>();
         }
         List<Value> a=this.getAllUnder(x);
-        Collections.sort(a, comparator);
-        return a;
+        Set<Value> s = new HashSet<>(a);
+        List<Value> b= new ArrayList<>(s);
+        Collections.sort(b, comparator);
+        return b;
         }
 
 
@@ -156,7 +158,6 @@ public class TrieImpl <Value> implements Trie<Value> {
         Node x=this.get(root, prefix, 0);
         List<Value> a=this.getAllUnder(x);
         Set<Value> set = new HashSet<>(a);
-        set.addAll(a);
 
         Node y=this.get(root, prefix1, 0);
         char c=prefix.charAt(prefix.length()-1);
@@ -191,6 +192,7 @@ public class TrieImpl <Value> implements Trie<Value> {
 
         Node<Value> node=get(root, key, 0);
         Value hold=null;
+        if (node==null|| node.valSet==null) return null;
         for(Value v:node.valSet){
             if (v.equals(val)){
                 hold=v;
