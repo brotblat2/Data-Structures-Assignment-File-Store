@@ -169,6 +169,7 @@ public class DocumentStoreImpl implements DocumentStore {
         }
 
         //NEED TO DELETE FROM THE TRIE
+
         Set<String> words=this.store.get(url).getWords();
         for(String word:words){
             documentTrie.delete(word, this.store.get(url));

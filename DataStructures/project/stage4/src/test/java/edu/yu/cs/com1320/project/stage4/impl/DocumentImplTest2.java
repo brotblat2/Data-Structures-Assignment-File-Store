@@ -25,7 +25,14 @@ class DocumentImplTest2 {
 
 
     }
-
+    @Test
+    void wordCountonBinary() {
+        setUp();
+        URI uri = URI.create("http://example.com");
+        byte[] b = {41, 42, 43, 44, 45};
+        DocumentImpl doc= new DocumentImpl(uri, b);
+        assertEquals(0, doc.wordCount("equal"));
+    }
     @Test
     void wordCountWithPeriod() {
         setUp();

@@ -653,7 +653,7 @@ class DocumentStoreImplTest {
         dstore.put(stream, uri, DocumentStore.DocumentFormat.BINARY);
         dstore.put(stream8, uri2, DocumentStore.DocumentFormat.BINARY);
         dstore.put(stream3, uri3, DocumentStore.DocumentFormat.BINARY);
-        dstore.undo(uri11);
+        dstore.undo(uri3);
         assertNull(dstore.get(uri3));
     }
 

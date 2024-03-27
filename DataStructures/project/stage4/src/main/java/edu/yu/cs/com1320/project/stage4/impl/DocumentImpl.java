@@ -160,6 +160,7 @@ public class DocumentImpl implements Document {
      */
     @Override
     public Set<String> getWords() {
+        if (wordCounts==null) return new HashSet<>();
         return wordCounts.keySet();
     }
 
