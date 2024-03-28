@@ -169,7 +169,7 @@ public class HashTableImpl <Key, Value> implements HashTable<Key, Value>{
 
     private boolean resize(){
         boolean b=false;
-        if(this.size>=5*this.baseArray.length){
+        if(this.size>4*this.baseArray.length){
             b=true;
 
             Linker<Key, Value>[] copy= new Linker[baseArray.length*2];

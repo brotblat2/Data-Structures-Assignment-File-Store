@@ -48,8 +48,6 @@ class DocumentStoreImplTest2 {
         dstore.setMetadata(uri2, "year", "1789");
         dstore.setMetadata(uri2, "color", "white");
 
-
-
     }
 
     @Test

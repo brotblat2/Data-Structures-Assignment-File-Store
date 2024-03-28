@@ -188,17 +188,27 @@ public class DocumentStoreImpl implements DocumentStore {
         //NEED TO DELETE FROM THE TRIE
         DocumentImpl doc = this.store.get(url);
         Set<String> words = doc.getWords();
-        DocumentImpl doc1 = this.store.put(url, null);
+        this.store.put(url, null);
         for (String word : words) {
             documentTrie.delete(word, doc);
-            Consumer<URI> u = (squash) -> {
-                this.documentTrie.put(word, doc);
-                this.store.put(url, doc1);
-            };
-            GenericCommand<URI> com = new GenericCommand<>(url, u);
-            commandStack.push(com);
         }
+
+        GenericCommand<URI> com = undoDeleteCommand(url, doc);
+        commandStack.push(com);
+
         return true;
+    }
+
+    private GenericCommand<URI> undoDeleteCommand(URI url, DocumentImpl doc) {
+        Consumer<URI> u = (squash) -> {
+        this.store.put(url, doc);
+        for (String word : doc.getWords()) {
+            this.documentTrie.put(word, doc);
+            }
+
+        };
+        GenericCommand<URI> com = new GenericCommand<>(url, u);
+        return com;
     }
 
     private Document privateDeleteFromTable(URI url){
@@ -288,33 +298,31 @@ public class DocumentStoreImpl implements DocumentStore {
     @Override
     public Set<URI> deleteAll(String keyword) {
         Set<Document> oldDocs= documentTrie.get(keyword);
-        if (oldDocs==null || oldDocs.isEmpty()) return new HashSet<>();
         Set<URI> oldUris= new HashSet<>();
-        for(Document d:oldDocs){
+        for(Document d:oldDocs) {
             oldUris.add(d.getKey());
+        }
+
+        if (oldDocs==null || oldDocs.isEmpty()) return new HashSet<>();
+
+        CommandSet<URI> cset= new CommandSet<>();
+
+        for(URI uri:oldUris){
+            cset.addCommand(undoDeleteCommand(uri, this.store.get(uri)));
+        }
+
+        for(Document d:oldDocs){
             for (String s:d.getWords()){
                 documentTrie.delete(s,d);
             }
         }
+
         for(URI u:oldUris){
             this.privateDeleteFromTable(u);
         }
-        CommandSet<URI> cset= new CommandSet<>();
-        for(Document d:oldDocs) {
-            Consumer<URI> u = (squash) -> {
-                for (String s : d.getWords()) {
-                    this.documentTrie.put(s, d);
-                }
-                URI url = d.getKey();
-                this.store.put(url, (DocumentImpl) d);
-            };
-            URI url = d.getKey();
-            GenericCommand<URI> com = new GenericCommand<>(url, u);
-            cset.add(com);
-        }
+
         commandStack.push(cset);
         return oldUris;
-
     }
     /**
      * Completely remove any trace of any document which contains a word that has the given prefix
@@ -325,29 +333,30 @@ public class DocumentStoreImpl implements DocumentStore {
     //UP TO HERE!!!!!!!!!
     @Override
     public Set<URI> deleteAllWithPrefix(String keywordPrefix) {
-        Set<Document> oldDocs=documentTrie.deleteAllWithPrefix(keywordPrefix);
+        List<Document> oldDocs= documentTrie.getAllWithPrefixSorted(keywordPrefix, new DocumentComparatorPrefix(keywordPrefix));
         Set<URI> oldUris= new HashSet<>();
-        for(Document d:oldDocs){
+        for(Document d:oldDocs) {
             oldUris.add(d.getKey());
+        }
+
+        if (oldDocs==null || oldDocs.isEmpty()) return new HashSet<>();
+
+        CommandSet<URI> cset= new CommandSet<>();
+
+        for(URI uri:oldUris){
+            cset.addCommand(undoDeleteCommand(uri, this.store.get(uri)));
+        }
+
+        for(Document d:oldDocs){
             for (String s:d.getWords()){
                 documentTrie.delete(s,d);
             }
-            this.privateDeleteFromTable(d.getKey());
         }
 
-        CommandSet<URI> cset= new CommandSet<>();
-        for(Document d:oldDocs) {
-            Consumer<URI> u = (squash) -> {
-                for (String s : d.getWords()) {
-                    this.documentTrie.put(s, d);
-                }
-                URI url = d.getKey();
-                this.store.put(url, (DocumentImpl) d);
-            };
-            URI url = d.getKey();
-            GenericCommand<URI> com = new GenericCommand<>(url, u);
-            cset.add(com);
+        for(URI u:oldUris){
+            this.privateDeleteFromTable(u);
         }
+
         commandStack.push(cset);
         return oldUris;
     }
@@ -387,6 +396,7 @@ public class DocumentStoreImpl implements DocumentStore {
         List<Document> docsList=searchByMetadata(keysValues);
         if(docsList==null || docsList.isEmpty()) return new ArrayList<>();
         List<Document> list=search(keyword);
+
         if(list==null || list.isEmpty()) return new ArrayList<>();
 
         for (Document doc : new ArrayList<>(docsList)) {
@@ -422,30 +432,30 @@ public class DocumentStoreImpl implements DocumentStore {
      */
     @Override
     public Set<URI> deleteAllWithMetadata(Map<String, String> keysValues) {
-        List<Document> list=searchByMetadata(keysValues);
+        List<Document> oldDocs= searchByMetadata(keysValues);
         Set<URI> oldUris= new HashSet<>();
-        //Delete from TRIE
-        for(Document doc:list){
-            for (String s:doc.getWords()){
-                documentTrie.delete(s, doc);
-            }
-            oldUris.add(doc.getKey());
-            this.privateDeleteFromTable(doc.getKey());
+        for(Document d:oldDocs) {
+            oldUris.add(d.getKey());
         }
 
+        if (oldDocs==null || oldDocs.isEmpty()) return new HashSet<>();
+
         CommandSet<URI> cset= new CommandSet<>();
-        for(Document d:list) {
-            Consumer<URI> u = (squash) -> {
-                for (String s : d.getWords()) {
-                    this.documentTrie.put(s, d);
-                }
-                URI url = d.getKey();
-                this.store.put(url, (DocumentImpl) d);
-            };
-            URI url = d.getKey();
-            GenericCommand<URI> com = new GenericCommand<>(url, u);
-            cset.add(com);
+
+        for(URI uri:oldUris){
+            cset.addCommand(undoDeleteCommand(uri, this.store.get(uri)));
         }
+
+        for(Document d:oldDocs){
+            for (String s:d.getWords()){
+                documentTrie.delete(s,d);
+            }
+        }
+
+        for(URI u:oldUris){
+            this.privateDeleteFromTable(u);
+        }
+
         commandStack.push(cset);
         return oldUris;
     }
@@ -457,31 +467,30 @@ public class DocumentStoreImpl implements DocumentStore {
      */
     @Override
     public Set<URI> deleteAllWithKeywordAndMetadata(String keyword, Map<String, String> keysValues) {
-        List<Document> list=searchByKeywordAndMetadata(keyword,keysValues);
+        List<Document> oldDocs= searchByKeywordAndMetadata(keyword,keysValues);
         Set<URI> oldUris= new HashSet<>();
-        //Delete from TRIE
-        for(Document doc:list){
-            for (String s:doc.getWords()){
-                documentTrie.delete(s, doc);
-            }
-            oldUris.add(doc.getKey());
-            this.privateDeleteFromTable(doc.getKey());
+        for(Document d:oldDocs) {
+            oldUris.add(d.getKey());
         }
 
+        if (oldDocs==null || oldDocs.isEmpty()) return new HashSet<>();
 
         CommandSet<URI> cset= new CommandSet<>();
-        for(Document d:list) {
-            Consumer<URI> u = (squash) -> {
-                for (String s : d.getWords()) {
-                    this.documentTrie.put(s, d);
-                }
-                URI url = d.getKey();
-                this.store.put(url, (DocumentImpl) d);
-            };
-            URI url = d.getKey();
-            GenericCommand<URI> com = new GenericCommand<>(url, u);
-            cset.add(com);
+
+        for(URI uri:oldUris){
+            cset.addCommand(undoDeleteCommand(uri, this.store.get(uri)));
         }
+
+        for(Document d:oldDocs){
+            for (String s:d.getWords()){
+                documentTrie.delete(s,d);
+            }
+        }
+
+        for(URI u:oldUris){
+            this.privateDeleteFromTable(u);
+        }
+
         commandStack.push(cset);
         return oldUris;
     }
@@ -493,29 +502,30 @@ public class DocumentStoreImpl implements DocumentStore {
      */
     @Override
     public Set<URI> deleteAllWithPrefixAndMetadata(String keywordPrefix, Map<String, String> keysValues) {
-        List<Document> list=searchByPrefixAndMetadata(keywordPrefix, keysValues);
+        List<Document> oldDocs= searchByPrefixAndMetadata(keywordPrefix,keysValues);
         Set<URI> oldUris= new HashSet<>();
-        //Delete from TRIE
-        for(Document doc:list){
-            for (String s:doc.getWords()){
-                documentTrie.delete(s, doc);
-            }
-            oldUris.add(doc.getKey());
-            this.privateDeleteFromTable(doc.getKey());
+        for(Document d:oldDocs) {
+            oldUris.add(d.getKey());
         }
+
+        if (oldDocs==null || oldDocs.isEmpty()) return new HashSet<>();
+
         CommandSet<URI> cset= new CommandSet<>();
-        for(Document d:list) {
-            Consumer<URI> u = (squash) -> {
-                for (String s : d.getWords()) {
-                    this.documentTrie.put(s, d);
-                }
-                URI url = d.getKey();
-                this.store.put(url, (DocumentImpl) d);
-            };
-            URI url = d.getKey();
-            GenericCommand<URI> com = new GenericCommand<>(url, u);
-            cset.add(com);
+
+        for(URI uri:oldUris){
+            cset.addCommand(undoDeleteCommand(uri, this.store.get(uri)));
         }
+
+        for(Document d:oldDocs){
+            for (String s:d.getWords()){
+                documentTrie.delete(s,d);
+            }
+        }
+
+        for(URI u:oldUris){
+            this.privateDeleteFromTable(u);
+        }
+
         commandStack.push(cset);
         return oldUris;
     }
