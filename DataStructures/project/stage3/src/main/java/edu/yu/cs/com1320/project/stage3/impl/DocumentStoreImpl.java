@@ -171,11 +171,14 @@ public class DocumentStoreImpl implements DocumentStore {
             throw new IllegalStateException();
         }
         Command c= commandStack.pop();
-        c.undo();
+        if (c!=null) c.undo();
     }
 
     @Override
     public void undo(URI url) throws IllegalStateException {
+        if (commandStack.size()==0){
+            throw new IllegalStateException();
+        }
         StackImpl<Command> temp=new StackImpl<>();
         boolean found=false;
         while (commandStack.peek()!=null){

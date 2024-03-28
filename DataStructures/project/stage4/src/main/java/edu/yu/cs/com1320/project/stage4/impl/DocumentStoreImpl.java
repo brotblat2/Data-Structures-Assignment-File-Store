@@ -12,13 +12,14 @@ import edu.yu.cs.com1320.project.impl.TrieImpl;
 import edu.yu.cs.com1320.project.stage4.Document;
 import edu.yu.cs.com1320.project.stage4.DocumentStore;
 import edu.yu.cs.com1320.project.undo.Command;
-
-import javax.print.Doc;
+import edu.yu.cs.com1320.project.undo.CommandSet;
+import edu.yu.cs.com1320.project.undo.GenericCommand;
+import edu.yu.cs.com1320.project.undo.Undoable;
 
 public class DocumentStoreImpl implements DocumentStore {
 
     private HashTableImpl<URI, DocumentImpl> store;
-    private StackImpl<Command> commandStack;
+    private StackImpl<Undoable> commandStack;
     private TrieImpl<Document> documentTrie;
 
     public DocumentStoreImpl(){
@@ -57,8 +58,9 @@ public class DocumentStoreImpl implements DocumentStore {
             this.store.get(uri).setMetadataValue(key, data);
         };
 
-        Command com=new Command(uri, u);
+        GenericCommand<URI> com=new GenericCommand<URI>(uri, u);
         commandStack.push(com);
+
         return data;
     }
 
@@ -116,38 +118,54 @@ public class DocumentStoreImpl implements DocumentStore {
             x= store.get(uri).hashCode();
         }
         putImple(input, uri, format);
+
         return x;
     }
     private void putImple(InputStream input, URI uri, DocumentFormat format) throws IOException {
         if (format==DocumentFormat.BINARY){
-            byte[] b = input.readAllBytes();
-            DocumentImpl d= new DocumentImpl(uri, b);
-            DocumentImpl doc=this.store.put(uri, d);
-            Consumer <URI> u = (squash) -> {
-                this.store.put(uri, doc);
-            };
-            Command com=new Command(uri, u);
-            commandStack.push(com);
+            binaryPut(input, uri);
         }
-        else{
-            byte[] b=input.readAllBytes();
-            String s =new String(b);
-            DocumentImpl d= new DocumentImpl(uri, s);
-
+        else {
+            byte[] b = input.readAllBytes();
+            String s = new String(b);
+            DocumentImpl d = new DocumentImpl(uri, s);
             //put time in to TRIE
-            Set<String> wordSet=d.getWords();
-            for (String word:wordSet) {
+            Set<String> wordSet = d.getWords();
+            for (String word : wordSet) {
                 documentTrie.put(word, d);
             }
+            DocumentImpl oldDoc = this.store.put(uri, d);
+            if (oldDoc!=null) {
+                for (String word : oldDoc.getWords()) {
+                    documentTrie.delete(word, oldDoc);
+                }
+            }
 
-            DocumentImpl doc=this.store.put(uri, d);
-
-            Consumer <URI> u = (squash) -> {
-                this.store.put(uri, doc);
+            Consumer<URI> u = (squash) -> {
+                this.store.put(uri, oldDoc);
+                if (oldDoc!=null) {
+                    for (String word : oldDoc.getWords()) {
+                        documentTrie.put(word, d);
+                    }
+                }
+                for (String word : d.getWords()) {
+                    documentTrie.delete(word, d);
+                }
             };
-            Command com=new Command(uri, u);
+            GenericCommand<URI> com = new GenericCommand<>(uri, u);
             commandStack.push(com);
         }
+    }
+
+    private void binaryPut(InputStream input, URI uri) throws IOException {
+        byte[] b = input.readAllBytes();
+        DocumentImpl d= new DocumentImpl(uri, b);
+        DocumentImpl doc=this.store.put(uri, d);
+        Consumer <URI> u = (squash) -> {
+            this.store.put(uri, doc);
+        };
+        GenericCommand<URI> com=new GenericCommand<>(uri, u);
+        commandStack.push(com);
     }
 
 
@@ -163,54 +181,63 @@ public class DocumentStoreImpl implements DocumentStore {
      * @param url the unique identifier of the document to delete
      * @return true if the document is deleted, false if no document exists with that URI
      */
-    public boolean delete(URI url){
-        if (this.store.get(url)==null){
+    public boolean delete(URI url) {
+        if (this.store.get(url) == null) {
             return false;
         }
-
         //NEED TO DELETE FROM THE TRIE
-
-        Set<String> words=this.store.get(url).getWords();
-        for(String word:words){
-            documentTrie.delete(word, this.store.get(url));
-        }
-
-        DocumentImpl doc= this.store.put(url, null);
-        Consumer <URI> u = (squash) -> {
-               this.store.put(url, doc);
+        DocumentImpl doc = this.store.get(url);
+        Set<String> words = doc.getWords();
+        DocumentImpl doc1 = this.store.put(url, null);
+        for (String word : words) {
+            documentTrie.delete(word, doc);
+            Consumer<URI> u = (squash) -> {
+                this.documentTrie.put(word, doc);
+                this.store.put(url, doc1);
             };
-            Command com=new Command(url, u);
+            GenericCommand<URI> com = new GenericCommand<>(url, u);
             commandStack.push(com);
-            return true;
+        }
+        return true;
     }
 
-    private boolean privateDeleteFromTable(URI url){
+    private Document privateDeleteFromTable(URI url){
         if (this.store.get(url)==null){
-            return false;
+            return null;
         }
         DocumentImpl doc= this.store.put(url, null);
         //NEED TO DELETE FROM THE TRIE
-        return true;
+        return doc;
     }
 
     @Override
     public void undo() throws IllegalStateException {
         //fixed from old assignment
         if (commandStack.size()==0){throw new IllegalStateException();}
-        Command c= commandStack.pop();
+        Undoable c= commandStack.pop();
         c.undo();
     }
 
+    private boolean hasURI(Undoable undoable, URI uri){
+        if (undoable instanceof GenericCommand<?>){
+            return ((GenericCommand) undoable).getTarget().toString().equals(uri.toString());
+        }
+        else{
+            return (((CommandSet)undoable).containsTarget(uri));
+        }
+    }
     @Override
     public void undo(URI url) throws IllegalStateException {
-        StackImpl<Command> temp=new StackImpl<>();
+        StackImpl<Undoable> temp=new StackImpl<>();
         boolean found=false;
         while (commandStack.peek()!=null){
-            if (!(commandStack.peek().getUri().toString().equals(url.toString()))){
+            if (!(hasURI(commandStack.peek(), url))){
                 temp.push(commandStack.pop());
             }
             else{
-               commandStack.pop().undo();
+                Undoable u=commandStack.pop();
+                if (u instanceof CommandSet<?>)  ((CommandSet)u).undo(url);
+                else u.undo();
                 found=true;
                 break;
             }
@@ -223,7 +250,8 @@ public class DocumentStoreImpl implements DocumentStore {
             commandStack.push(temp.pop());
         }
 
-        }
+    }
+
 
     /**
      * Retrieve all documents whose text contains the given keyword.
@@ -260,6 +288,7 @@ public class DocumentStoreImpl implements DocumentStore {
     @Override
     public Set<URI> deleteAll(String keyword) {
         Set<Document> oldDocs= documentTrie.get(keyword);
+        if (oldDocs==null || oldDocs.isEmpty()) return new HashSet<>();
         Set<URI> oldUris= new HashSet<>();
         for(Document d:oldDocs){
             oldUris.add(d.getKey());
@@ -270,7 +299,20 @@ public class DocumentStoreImpl implements DocumentStore {
         for(URI u:oldUris){
             this.privateDeleteFromTable(u);
         }
-
+        CommandSet<URI> cset= new CommandSet<>();
+        for(Document d:oldDocs) {
+            Consumer<URI> u = (squash) -> {
+                for (String s : d.getWords()) {
+                    this.documentTrie.put(s, d);
+                }
+                URI url = d.getKey();
+                this.store.put(url, (DocumentImpl) d);
+            };
+            URI url = d.getKey();
+            GenericCommand<URI> com = new GenericCommand<>(url, u);
+            cset.add(com);
+        }
+        commandStack.push(cset);
         return oldUris;
 
     }
@@ -293,6 +335,20 @@ public class DocumentStoreImpl implements DocumentStore {
             this.privateDeleteFromTable(d.getKey());
         }
 
+        CommandSet<URI> cset= new CommandSet<>();
+        for(Document d:oldDocs) {
+            Consumer<URI> u = (squash) -> {
+                for (String s : d.getWords()) {
+                    this.documentTrie.put(s, d);
+                }
+                URI url = d.getKey();
+                this.store.put(url, (DocumentImpl) d);
+            };
+            URI url = d.getKey();
+            GenericCommand<URI> com = new GenericCommand<>(url, u);
+            cset.add(com);
+        }
+        commandStack.push(cset);
         return oldUris;
     }
 
@@ -376,6 +432,21 @@ public class DocumentStoreImpl implements DocumentStore {
             oldUris.add(doc.getKey());
             this.privateDeleteFromTable(doc.getKey());
         }
+
+        CommandSet<URI> cset= new CommandSet<>();
+        for(Document d:list) {
+            Consumer<URI> u = (squash) -> {
+                for (String s : d.getWords()) {
+                    this.documentTrie.put(s, d);
+                }
+                URI url = d.getKey();
+                this.store.put(url, (DocumentImpl) d);
+            };
+            URI url = d.getKey();
+            GenericCommand<URI> com = new GenericCommand<>(url, u);
+            cset.add(com);
+        }
+        commandStack.push(cset);
         return oldUris;
     }
     /**
@@ -396,6 +467,22 @@ public class DocumentStoreImpl implements DocumentStore {
             oldUris.add(doc.getKey());
             this.privateDeleteFromTable(doc.getKey());
         }
+
+
+        CommandSet<URI> cset= new CommandSet<>();
+        for(Document d:list) {
+            Consumer<URI> u = (squash) -> {
+                for (String s : d.getWords()) {
+                    this.documentTrie.put(s, d);
+                }
+                URI url = d.getKey();
+                this.store.put(url, (DocumentImpl) d);
+            };
+            URI url = d.getKey();
+            GenericCommand<URI> com = new GenericCommand<>(url, u);
+            cset.add(com);
+        }
+        commandStack.push(cset);
         return oldUris;
     }
     /**
@@ -416,6 +503,20 @@ public class DocumentStoreImpl implements DocumentStore {
             oldUris.add(doc.getKey());
             this.privateDeleteFromTable(doc.getKey());
         }
+        CommandSet<URI> cset= new CommandSet<>();
+        for(Document d:list) {
+            Consumer<URI> u = (squash) -> {
+                for (String s : d.getWords()) {
+                    this.documentTrie.put(s, d);
+                }
+                URI url = d.getKey();
+                this.store.put(url, (DocumentImpl) d);
+            };
+            URI url = d.getKey();
+            GenericCommand<URI> com = new GenericCommand<>(url, u);
+            cset.add(com);
+        }
+        commandStack.push(cset);
         return oldUris;
     }
 
