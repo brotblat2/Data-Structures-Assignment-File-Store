@@ -77,16 +77,16 @@ public class HashTableImpl <Key, Value> implements HashTable<Key, Value>{
                 throw new IllegalArgumentException();
             }
             Linker<K,V> current = this;
+
+
             if (this.key.equals(k)) {
-                if (this.next == null) return null;
-                else {
-                    current = this.next;
-                    return current;
-                }
+                return this.next;
             }
-            while (current.next != null && current.next != k) {
+
+            while (current.next != null && current.next.key != k) {
                 current = current.next;
             }
+
             if (current.next != null) {
                 current.next = current.next.next;
             }

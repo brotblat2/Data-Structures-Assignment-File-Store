@@ -8,7 +8,6 @@ import java.util.*;
 public class HashTableImpl <Key, Value> implements HashTable<Key, Value>{
     private class Linker <K, V> {
         private K key;
-
         private V value;
 
         private Linker<K, V> next;
@@ -78,16 +77,16 @@ public class HashTableImpl <Key, Value> implements HashTable<Key, Value>{
                 throw new IllegalArgumentException();
             }
             Linker<K,V> current = this;
+
+
             if (this.key.equals(k)) {
-                if (this.next == null) return null;
-                else {
-                    current = this.next;
-                    return current;
-                }
+                return this.next;
             }
-            while (current.next != null && current.next != k) {
+
+            while (current.next != null && current.next.key != k) {
                 current = current.next;
             }
+
             if (current.next != null) {
                 current.next = current.next.next;
             }
@@ -169,7 +168,7 @@ public class HashTableImpl <Key, Value> implements HashTable<Key, Value>{
 
     private boolean resize(){
         boolean b=false;
-        if(this.size>4*this.baseArray.length){
+        if(this.size>=4*this.baseArray.length){
             b=true;
 
             Linker<Key, Value>[] copy= new Linker[baseArray.length*2];

@@ -152,16 +152,19 @@ public class DocumentStoreImpl implements DocumentStore {
      * @return true if the document is deleted, false if no document exists with that URI
      */
     public boolean delete(URI url){
-        if (this.store.get(url)==null){
+        DocumentImpl doc=this.store.get(url);
+        if (doc==null){
             return false;
         }
-        DocumentImpl doc= this.store.put(url, null);
-            Consumer <URI> u = (squash) -> {
-               this.store.put(url, doc);
-            };
-            Command com=new Command(url, u);
-            commandStack.push(com);
-            return true;
+        Consumer <URI> u = (newUrl) -> {
+            this.store.put(url, doc);
+        };
+        Command com=new Command(url, u);
+        commandStack.push(com);
+
+         this.store.put(url, null);
+
+         return true;
     }
 
     @Override
