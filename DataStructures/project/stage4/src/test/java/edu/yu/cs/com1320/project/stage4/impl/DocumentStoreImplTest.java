@@ -912,6 +912,12 @@ class DocumentStoreImplTest {
         assertTrue(uriSet.contains(uri1));
         assertTrue(uriSet.contains(uri2));
         assertFalse(uriSet.contains(uri));
+        assertEquals(1, dstore.searchByPrefix("t").size());
+        dstore.undo(uri1);
+        assertEquals(2, dstore.searchByPrefix("t").size());
+        dstore.undo();
+        assertEquals(3, dstore.searchByPrefix("t").size());
+
     }
 //STAGE 4 PRE UNDO TESTS!!!!
     /*

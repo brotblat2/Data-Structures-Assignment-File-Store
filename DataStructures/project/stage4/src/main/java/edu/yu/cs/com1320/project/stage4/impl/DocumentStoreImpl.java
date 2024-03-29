@@ -244,9 +244,15 @@ public class DocumentStoreImpl implements DocumentStore {
                 temp.push(commandStack.pop());
             }
             else{
-                Undoable u=commandStack.pop();
-                if (u instanceof CommandSet<?>)  ((CommandSet)u).undo(url);
-                else u.undo();
+                Undoable u=commandStack.peek();
+                if (u instanceof CommandSet<?>){
+                    ((CommandSet)u).undo(url);
+                    if(((CommandSet)u).size()==0) commandStack.pop();
+                }
+                else {
+                    u.undo();
+                    commandStack.pop();
+                }
                 found=true;
                 break;
             }
