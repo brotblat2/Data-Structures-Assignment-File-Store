@@ -83,7 +83,7 @@ public class HashTableImpl <Key, Value> implements HashTable<Key, Value>{
                 return this.next;
             }
 
-            while (current.next != null && current.next.key != k) {
+            while (current.next != null && (!current.next.key.equals(k))) {
                 current = current.next;
             }
 
@@ -93,6 +93,7 @@ public class HashTableImpl <Key, Value> implements HashTable<Key, Value>{
             return this;
 
         }
+
         private int length(){
             int c=1;
             Linker<K,V> current=this;

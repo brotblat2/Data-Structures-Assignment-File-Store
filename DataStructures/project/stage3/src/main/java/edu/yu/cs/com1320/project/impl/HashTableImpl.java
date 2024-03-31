@@ -83,7 +83,7 @@ public class HashTableImpl <Key, Value> implements HashTable<Key, Value>{
                 return this.next;
             }
 
-            while (current.next != null && current.next.key != k) {
+            while (current.next != null && !current.next.key.equals(k)) {
                 current = current.next;
             }
 

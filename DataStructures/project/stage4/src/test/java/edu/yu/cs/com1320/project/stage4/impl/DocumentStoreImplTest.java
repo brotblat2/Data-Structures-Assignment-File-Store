@@ -54,9 +54,7 @@ class DocumentStoreImplTest {
 
     }
 
-    @Test
-    void setMetadata() {
-    }
+ 
     @Test
     void setMetadataError() throws IOException {
         URI uri = URI.create("http://fox.com");
