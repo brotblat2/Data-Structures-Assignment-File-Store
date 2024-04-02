@@ -1,7 +1,7 @@
-package edu.yu.cs.com1320.project.stage4.impl;
+package edu.yu.cs.com1320.project.stage5.impl;
 
-import edu.yu.cs.com1320.project.stage4.Document;
-import edu.yu.cs.com1320.project.stage4.DocumentStore;
+import edu.yu.cs.com1320.project.stage5.Document;
+import edu.yu.cs.com1320.project.stage5.DocumentStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -110,26 +110,25 @@ class DocumentStoreImplTest {
     }
     @Test
     public void undoAfterOnePut() throws Exception {
-        setUp();
         URI url1 = URI.create("http://cnn.com");
-        String txt1 = "score";
+        String txt1 = "Hello";
         byte[] b = txt1.getBytes();
         ByteArrayInputStream stream = new ByteArrayInputStream(b);
+        DocumentStoreImpl dsi = new DocumentStoreImpl();
         //undo after putting only one doc
         DocumentImpl doc1 = new DocumentImpl(url1, txt1);
-        dstore.put(stream,url1,DocumentStore.DocumentFormat.TXT);
-        DocumentImpl returned1 = (DocumentImpl) dstore.get(url1);
+        dsi.put(stream,url1,DocumentStore.DocumentFormat.TXT);
+        DocumentImpl returned1 = (DocumentImpl) dsi.get(url1);
         assertNotNull(returned1, "Did not get a document back after putting it in");
         assertEquals(doc1.getKey(), returned1.getKey(), "Did not get doc1 back");
-        dstore.deleteAll("score");
-        returned1 = (DocumentImpl) dstore.get(url1);
+        dsi.undo();
+        returned1 = (DocumentImpl) dsi.get(url1);
         assertNull(returned1, "Put was undone should have been null");
-        dstore.undo();
-        assertNotNull(dstore.search("score"));
-        assertNotNull(dstore.get(uri));
-
-
-
+        try {
+            dsi.undo();
+            fail("no documents should've thrown IllegalStateException");
+        } catch (IllegalStateException e) {
+        }
     }
 
     @Test
@@ -920,10 +919,10 @@ class DocumentStoreImplTest {
     }
 //STAGE 4 PRE UNDO TESTS!!!!
     /*
-    package edu.yu.cs.com1320.project.stage4.impl;
+    package edu.yu.cs.com1320.project.stage5.impl;
 
-import edu.yu.cs.com1320.project.stage4.Document;
-import edu.yu.cs.com1320.project.stage4.DocumentStore;
+import edu.yu.cs.com1320.project.stage5.Document;
+import edu.yu.cs.com1320.project.stage5.DocumentStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

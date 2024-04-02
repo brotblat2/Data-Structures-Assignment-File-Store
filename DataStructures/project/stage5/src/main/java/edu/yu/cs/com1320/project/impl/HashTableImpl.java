@@ -76,7 +76,6 @@ public class HashTableImpl <Key, Value> implements HashTable<Key, Value>{
             if (k == null) {
                 throw new IllegalArgumentException();
             }
-
             Linker<K,V> current = this;
 
 
