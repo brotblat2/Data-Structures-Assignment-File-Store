@@ -5,9 +5,8 @@ import edu.yu.cs.com1320.project.HashTable;
 import java.net.URI;
 import java.util.Set;
 
-public interface Document
+public interface Document extends Comparable<Document>
 {
-
     /**
      * @param key key of document metadata to store a value for
      * @param value value to store
@@ -42,17 +41,22 @@ public interface Document
      */
     URI getKey();
 
-    //***************STAGE 4 ADDITIONS
-
     /**
      * how many times does the given word appear in the document?
      * @param word
      * @return the number of times the given words appears in the document. If it's a binary document, return 0.
      */
     int wordCount(String word);
-
     /**
      * @return all the words that appear in the document
      */
     Set<String> getWords();
+
+
+    /**
+     * return the last time this document was used, via put/get or via a search result
+     * (for stage 4 of project)
+     */
+    long getLastUseTime();
+    void setLastUseTime(long timeInNanoseconds);
 }

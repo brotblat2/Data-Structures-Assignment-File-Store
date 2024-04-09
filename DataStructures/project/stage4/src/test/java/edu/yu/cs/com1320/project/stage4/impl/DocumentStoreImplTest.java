@@ -124,9 +124,19 @@ class DocumentStoreImplTest {
         dstore.deleteAll("score");
         returned1 = (DocumentImpl) dstore.get(url1);
         assertNull(returned1, "Put was undone should have been null");
-        dstore.undo();
+        assertEquals(0,dstore.search("score").size());
+        assertNull(dstore.get(uri));
         assertNotNull(dstore.search("score"));
-        assertNotNull(dstore.get(uri));
+        //assertNotNull(dstore.get(uri));
+        //dstore.setMetadata(uri, "smell", "none");
+
+        dstore.undo(url1);
+
+
+        assertEquals(1,dstore.search("score").size());
+        assertNotNull(dstore.get(url1));
+        assertNull(dstore.get(uri));
+
 
 
 

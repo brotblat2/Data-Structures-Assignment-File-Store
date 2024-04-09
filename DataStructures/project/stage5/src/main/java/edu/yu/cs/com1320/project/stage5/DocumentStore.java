@@ -41,9 +41,9 @@ public interface DocumentStore
      * @param format indicates which type of document format is being passed
      * @return if there is no previous doc at the given URI, return 0. If there is a previous doc, return the hashCode of the previous doc. If InputStream is null, this is a delete, and thus return either the hashCode of the deleted doc or 0 if there is no doc to delete.
      * @throws IOException if there is an issue reading input
-     * @throws IllegalArgumentException if url or format are null
+     * @throws IllegalArgumentException if url or format are null, OR IF THE MEMORY FOOTPRINT OF THE DOCUMENT IS > MAX DOCUMENT BYTES
      */
-    int put(InputStream input, URI url, DocumentFormat format) throws IOException;
+    int put(InputStream input, URI url, DocumentFormat format)  throws IOException;
 
     /**
      * @param url the unique identifier of the document to get
@@ -84,7 +84,7 @@ public interface DocumentStore
     List<Document> search(String keyword);
 
     /**
-     * Retrieve all documents that contain text which starts with the given prefix
+     * Retrieve all documents containing a word that starts with the given prefix
      * Documents are returned in sorted, descending order, sorted by the number of times the prefix appears in the document.
      * Search is CASE SENSITIVE.
      * @param keywordPrefix
@@ -131,7 +131,7 @@ public interface DocumentStore
      * @param keywordPrefix
      * @return a List of the matches. If there are no matches, return an empty list.
      */
-    List<Document> searchByPrefixAndMetadata(String keywordPrefix,Map<String,String> keysValues);
+    List<Document> searchByPrefixAndMetadata(String keywordPrefix, Map<String,String> keysValues);
 
     /**
      * Completely remove any trace of any document which has the given key-value pairs in its metadata
@@ -155,4 +155,20 @@ public interface DocumentStore
      * @return a Set of URIs of the documents that were deleted.
      */
     Set<URI> deleteAllWithPrefixAndMetadata(String keywordPrefix,Map<String,String> keysValues);
+
+    //**********STAGE 5 ADDITIONS
+
+    /**
+     * set maximum number of documents that may be stored
+     * @param limit
+     * @throws IllegalArgumentException if limit < 1
+     */
+    void setMaxDocumentCount(int limit);
+
+    /**
+     * set maximum number of bytes of memory that may be used by all the documents in memory combined
+     * @param limit
+     * @throws IllegalArgumentException if limit < 1
+     */
+    void setMaxDocumentBytes(int limit);
 }

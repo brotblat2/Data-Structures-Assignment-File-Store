@@ -731,15 +731,18 @@ class DocumentStoreImplTest {
     void put() throws IOException {
         setUp();
         URI uriT = URI.create("http://example.com");
-        String s= "hello";
+        String s= "the hello";
         byte[] bytes = s.getBytes();
         ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
         dstore.put(stream,uriT, DocumentStore.DocumentFormat.TXT );
         assertEquals(dstore.get(uriT).getDocumentTxt(), s);
         assertEquals(1,dstore.search("hello").size());
+        dstore.setMaxDocumentCount(1);
+        assertEquals(1,dstore.searchByPrefix("").size());
         dstore.undo();
         assertNull(dstore.get(uriT));
         assertEquals(0,dstore.search("hello").size());
+
     }
 
     @Test

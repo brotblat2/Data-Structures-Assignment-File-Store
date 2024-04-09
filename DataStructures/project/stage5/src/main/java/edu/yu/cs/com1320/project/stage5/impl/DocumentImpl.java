@@ -14,6 +14,7 @@ public class DocumentImpl implements Document {
     private byte[] binaryData;
     private HashTableImpl<String, String> meta;
     private HashMap<String, Integer> wordCounts;
+    private long lastUseTime;
 
 
 
@@ -25,6 +26,7 @@ public class DocumentImpl implements Document {
         this.txt=txt;
         this.meta= new HashTableImpl<>();
         this.wordCounts=this.wordCountTable();
+        this.lastUseTime=System.nanoTime();
     }
 
     public DocumentImpl(URI uri, byte[] binaryData){
@@ -41,7 +43,7 @@ public class DocumentImpl implements Document {
         this.uri=uri;
         this.binaryData=binaryData;
         this.meta= new HashTableImpl<>();
-
+        this.lastUseTime=System.nanoTime();
 
     }
 
@@ -165,6 +167,16 @@ public class DocumentImpl implements Document {
     }
 
     @Override
+    public long getLastUseTime() {
+        return this.lastUseTime;
+    }
+
+    @Override
+    public void setLastUseTime(long timeInNanoseconds) {
+        this.lastUseTime=timeInNanoseconds;
+    }
+
+    @Override
     public int hashCode() {
         int result = uri.hashCode();
         result = 31 * result + (txt != null ? txt.hashCode() : 0);
@@ -181,5 +193,13 @@ public class DocumentImpl implements Document {
             return false;
         }
     }
+
+    @Override
+    public int compareTo(Document o) {
+
+        return (int) (-1*(o.getLastUseTime()-this.lastUseTime));
+    }
+
+
 
 }

@@ -4,10 +4,15 @@ import edu.yu.cs.com1320.project.MinHeap;
 
 public class MinHeapImpl<E extends Comparable<E>> extends MinHeap<E> {
 
+    public MinHeapImpl(){
+        super.elements= (E[]) new Comparable[10];;
+    }
+
 
     @Override
     public void reHeapify(E element) {
         int i=getArrayIndex(element);
+        if(i<0) return;
         super.upHeap(i);
         super.downHeap(i);
     }
@@ -15,8 +20,8 @@ public class MinHeapImpl<E extends Comparable<E>> extends MinHeap<E> {
     @Override
     protected int getArrayIndex(E element) {
 
-        for (int i = 0; i < this.elements.length; i++) {
-            if (this.elements[i].equals(element)) return i;
+        for (int i = 1; i < this.elements.length; i++) {
+            if(elements[i]!=null) if (this.elements[i].equals(element)) return i;
         }
         return -1;
 
@@ -26,7 +31,7 @@ public class MinHeapImpl<E extends Comparable<E>> extends MinHeap<E> {
     @Override
     protected void doubleArraySize() {
         if (elements[this.elements.length - 1] != null) {
-            E[] temp = new E[elements.length * 2];
+            E[] temp = (E[]) new Comparable[this.elements.length * 2];
             for (int i = 0; i < this.elements.length; i++) {
                 temp[i] = elements[i];
             }
