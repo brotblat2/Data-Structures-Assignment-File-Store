@@ -114,6 +114,7 @@ public class DocumentStoreImpl implements DocumentStore {
         if (format==null){
             throw new IllegalArgumentException("Null Format");
         }
+        if (this.maxDocumentBytes>0 && input.readAllBytes().length>this.maxDocumentBytes) throw new IllegalArgumentException();
 
         //Return Value and acting as delete
         int x;
@@ -129,6 +130,7 @@ public class DocumentStoreImpl implements DocumentStore {
         else{
             x= store.get(uri).hashCode();
         }
+
         putImple(input, uri, format);
 
         makeSpace();
@@ -270,13 +272,14 @@ public class DocumentStoreImpl implements DocumentStore {
     }
 
     private boolean hasURI(Undoable undoable, URI uri){
-        if (undoable instanceof GenericCommand<?>){
-            return ((GenericCommand) undoable).getTarget().toString().equals(uri.toString());
+        if (undoable instanceof GenericCommand){
+            return ((GenericCommand<URI>) undoable).getTarget().toString().equals(uri.toString());
         }
         else{
-            return (((CommandSet)undoable).containsTarget(uri));
+            return (((CommandSet<URI>)undoable).containsTarget(uri));
         }
     }
+
     @Override
     public void undo(URI url) throws IllegalStateException {
         StackImpl<Undoable> temp=new StackImpl<>();
@@ -625,10 +628,33 @@ public class DocumentStoreImpl implements DocumentStore {
         this.maxDocumentCount=limit;
         while (this.store.size()>limit){
             Document d= documentMinHeap.remove();
+
+            removeFromStack(d.getKey());
+
             this.store.put(d.getKey(),null);
             for (String word:d.getWords()){
                 documentTrie.deleteAll(word);
             }
+        }
+    }
+    private void removeFromStack(URI uri) {
+        StackImpl<Undoable> temp = new StackImpl<>();
+        while (this.commandStack.peek()!=null) {
+            Undoable u = this.commandStack.pop();
+            if (!hasURI(u, uri)) {
+                temp.push(u);
+            }
+
+            else {
+                if (u instanceof CommandSet) {
+                    CommandSet<URI> cs = (CommandSet) u;
+                    cs.undo(uri);
+                    if (cs.size() != 0) temp.push(u);
+                }
+            }
+        }
+        while(temp.size()!=0){
+            this.commandStack.push(temp.pop());
         }
     }
 
@@ -639,6 +665,7 @@ public class DocumentStoreImpl implements DocumentStore {
         int b=this.getBytes();
         while (b>limit){
             Document d= documentMinHeap.remove();
+            removeFromStack(d.getKey());
             this.store.put(d.getKey(),null);
             for (String word:d.getWords()){
                 documentTrie.deleteAll(word);

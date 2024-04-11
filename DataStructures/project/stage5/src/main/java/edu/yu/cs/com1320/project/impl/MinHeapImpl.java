@@ -2,6 +2,8 @@ package edu.yu.cs.com1320.project.impl;
 
 import edu.yu.cs.com1320.project.MinHeap;
 
+import java.util.NoSuchElementException;
+
 public class MinHeapImpl<E extends Comparable<E>> extends MinHeap<E> {
 
     public MinHeapImpl(){
@@ -12,7 +14,6 @@ public class MinHeapImpl<E extends Comparable<E>> extends MinHeap<E> {
     @Override
     public void reHeapify(E element) {
         int i=getArrayIndex(element);
-        if(i<0) return;
         super.upHeap(i);
         super.downHeap(i);
     }
@@ -23,7 +24,8 @@ public class MinHeapImpl<E extends Comparable<E>> extends MinHeap<E> {
         for (int i = 1; i < this.elements.length; i++) {
             if(elements[i]!=null) if (this.elements[i].equals(element)) return i;
         }
-        return -1;
+
+        throw new NoSuchElementException();
 
     }
 

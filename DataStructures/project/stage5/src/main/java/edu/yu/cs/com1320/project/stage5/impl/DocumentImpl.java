@@ -193,11 +193,12 @@ public class DocumentImpl implements Document {
             return false;
         }
     }
-
     @Override
     public int compareTo(Document o) {
-
-        return (int) (-1*(o.getLastUseTime()-this.lastUseTime));
+        long dif = this.lastUseTime - o.getLastUseTime();
+        if (dif < 0) return -1;
+        else if (dif > 0) return 1;
+        else return 0;
     }
 
 

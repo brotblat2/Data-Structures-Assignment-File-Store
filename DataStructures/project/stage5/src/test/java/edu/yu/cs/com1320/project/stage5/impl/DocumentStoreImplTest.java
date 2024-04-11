@@ -53,6 +53,33 @@ class DocumentStoreImplTest {
         dstore.setMetadata(uri2, "color", "white");
 
     }
+    @Test
+    void checkHeapOrder() throws IOException {
+        setUp();
+        dstore.setMetadata(uri, "year", "1863");
+        dstore.get(uri1);
+        dstore.getMetadata(uri2, "year");
+        dstore.delete(uri);
+
+        dstore.undo();
+
+        URI url = URI.create("http://foxuu.com");
+        assertEquals(3, dstore.search("the").size());
+
+        byte[] b = {1, 2, 3, 4};
+        ByteArrayInputStream stream = new ByteArrayInputStream(b);
+        dstore.put(stream, url, DocumentStore.DocumentFormat.BINARY);
+
+
+
+        dstore.setMaxDocumentCount(1);
+
+        assertThrows(IllegalStateException.class, () -> {
+            dstore.undo (uri);
+        });
+
+        assertEquals(0, dstore.searchByPrefix("the").size());
+    }
 
  
     @Test
