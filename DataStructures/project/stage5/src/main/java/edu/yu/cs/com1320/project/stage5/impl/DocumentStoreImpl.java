@@ -16,6 +16,8 @@ import edu.yu.cs.com1320.project.undo.CommandSet;
 import edu.yu.cs.com1320.project.undo.GenericCommand;
 import edu.yu.cs.com1320.project.undo.Undoable;
 
+import javax.print.Doc;
+
 public class DocumentStoreImpl implements DocumentStore {
 
     private HashTableImpl<URI, DocumentImpl> store;
@@ -266,7 +268,11 @@ public class DocumentStoreImpl implements DocumentStore {
     @Override
     public void undo() throws IllegalStateException {
         //fixed from old assignment
-        if (commandStack.size()==0){throw new IllegalStateException();}
+        if (commandStack.size()==0) {throw new IllegalStateException();}
+        while (commandStack.peek()==null){
+            if (commandStack.size()==0){throw new IllegalStateException();}
+            commandStack.pop();
+        }
         Undoable c= commandStack.pop();
         c.undo();
     }
@@ -284,8 +290,11 @@ public class DocumentStoreImpl implements DocumentStore {
     public void undo(URI url) throws IllegalStateException {
         StackImpl<Undoable> temp=new StackImpl<>();
         boolean found=false;
-        while (commandStack.peek()!=null){
-            if (!(hasURI(commandStack.peek(), url))){
+        while (commandStack.size()!=0){
+            if (commandStack.peek()==null){
+                commandStack.pop();
+            }
+            else if (!(hasURI(commandStack.peek(), url))){
                 temp.push(commandStack.pop());
             }
             else{
@@ -359,7 +368,7 @@ public class DocumentStoreImpl implements DocumentStore {
      */
     @Override
     public Set<URI> deleteAll(String keyword) {
-        Set<Document> oldDocs= documentTrie.get(keyword);
+        Set<Document> oldDocs= new HashSet<>( documentTrie.get(keyword));
         Set<URI> oldUris= new HashSet<>();
         for(Document d:oldDocs) {
             d.setLastUseTime(System.nanoTime());
@@ -626,36 +635,92 @@ public class DocumentStoreImpl implements DocumentStore {
     public void setMaxDocumentCount(int limit) {
         if(limit<1) throw new IllegalArgumentException();
         this.maxDocumentCount=limit;
-        while (this.store.size()>limit){
-            Document d= documentMinHeap.remove();
 
-            removeFromStack(d.getKey());
+        if (this.store.size()>limit){
 
-            this.store.put(d.getKey(),null);
-            for (String word:d.getWords()){
-                documentTrie.deleteAll(word);
-            }
-        }
-    }
-    private void removeFromStack(URI uri) {
-        StackImpl<Undoable> temp = new StackImpl<>();
-        while (this.commandStack.peek()!=null) {
-            Undoable u = this.commandStack.pop();
-            if (!hasURI(u, uri)) {
-                temp.push(u);
+            List<Document> docList= new ArrayList<>();
+            for (int i=0; i<store.size()-limit; i++){
+                docList.add(documentMinHeap.remove());
             }
 
-            else {
-                if (u instanceof CommandSet) {
-                    CommandSet<URI> cs = (CommandSet) u;
-                    cs.undo(uri);
-                    if (cs.size() != 0) temp.push(u);
+            List<URI> uriList= removeFromStackPastLimit(docList);
+
+
+            for (URI url:uriList){
+                if (this.store.get(url)!=null) this.store.put(url,null);
+            }
+
+            for (Document d:docList) {
+                if (d.getWords() != null) {
+                    for (String word : d.getWords()) {
+                        if (documentTrie.get(word)!=null) documentTrie.delete(word, d);
+                    }
                 }
             }
         }
-        while(temp.size()!=0){
+    }
+
+
+    private List<URI> removeFromStackPastLimit(List<Document> docList) {
+        List<URI> uriList=new ArrayList<>();
+
+        for (Document doc : docList){
+            uriList.add(doc.getKey());
+        }
+
+        StackImpl<Undoable> temp= new StackImpl<>();
+
+        while(commandStack.size()!=0){
+
+            if (commandStack.peek() instanceof GenericCommand<?>) {
+
+                GenericCommand<URI> peek = (GenericCommand<URI>) commandStack.pop();
+
+                if (!uriList.contains(peek.getTarget())) {
+                    temp.push(peek);
+                }
+            }
+
+            else{
+                CommandSet<URI> peek = (CommandSet<URI>) commandStack.pop();
+                CommandSet<URI> rep=new CommandSet<>();
+                if (peek!=null) for(GenericCommand<URI> gc:peek){
+                    if (!(uriList.contains(gc.getTarget()))){
+                        rep.addCommand(gc);
+                    }
+                }
+                if (rep.size()!=0) temp.push(rep);
+            }
+
+        }
+        while (temp.size()!=0){
             this.commandStack.push(temp.pop());
         }
+        return uriList;
+    }
+
+    private void removeFromStack(URI uri) {
+        StackImpl<Undoable> temp = new StackImpl<>();
+        while (commandStack.size()!=0){
+            if (commandStack.peek()==null) commandStack.pop();
+            else if (!(hasURI(commandStack.peek(), uri))){
+                temp.push(commandStack.pop());
+            }
+            else {
+                if (commandStack.peek() instanceof CommandSet) {
+                    CommandSet<URI> cs = (CommandSet<URI>) commandStack.peek();
+                    while(cs.containsTarget(uri)) cs.undo(uri);
+                    if (cs.size() != 0) temp.push(commandStack.peek());
+                }
+                commandStack.pop();
+            }
+        }
+
+        while(temp.size()!=0){
+            Undoable ud =temp.pop();
+            if (ud!=null) this.commandStack.push(ud);
+        }
+
     }
 
     @Override
@@ -666,9 +731,11 @@ public class DocumentStoreImpl implements DocumentStore {
         while (b>limit){
             Document d= documentMinHeap.remove();
             removeFromStack(d.getKey());
-            this.store.put(d.getKey(),null);
-            for (String word:d.getWords()){
-                documentTrie.deleteAll(word);
+            if (this.store.get(d.getKey())!=null) this.store.put(d.getKey(),null);
+            if (d.getWords()!=null) {
+                for (String word : d.getWords()) {
+                    documentTrie.delete(word, d);
+                }
             }
             if(d.getDocumentBinaryData()!=null) b-=d.getDocumentBinaryData().length;
             if(d.getDocumentTxt()!=null) b-=d.getDocumentTxt().getBytes().length;

@@ -69,6 +69,8 @@ class DocumentStoreImplTest {
         byte[] b = {1, 2, 3, 4};
         ByteArrayInputStream stream = new ByteArrayInputStream(b);
         dstore.put(stream, url, DocumentStore.DocumentFormat.BINARY);
+        dstore.setMetadata(url, "color","blue");
+
 
 
 
@@ -78,9 +80,56 @@ class DocumentStoreImplTest {
             dstore.undo (uri);
         });
 
-        assertEquals(0, dstore.searchByPrefix("the").size());
+        assertThrows(IllegalStateException.class, () -> {
+            dstore.undo (uri2);
+        });
+        assertThrows(IllegalStateException.class, () -> {
+            dstore.undo (uri2);
+        });
+        assertThrows(IllegalStateException.class, () -> {
+            dstore.undo (uri2);
+        });
+
+        assertThrows(IllegalStateException.class, () -> {
+            dstore.undo (uri);
+        });
+
+        assertThrows(IllegalStateException.class, () -> {
+            dstore.undo (uri2);
+        });
+
+
+        assertEquals(0, dstore.search("the").size());
     }
 
+    @Test
+    void checkHeapOrder2() throws IOException {
+        setUp();
+        URI url = URI.create("http://foxuu.com");
+        byte[] b = {1, 2, 3, 4};
+        ByteArrayInputStream stream = new ByteArrayInputStream(b);
+        dstore.put(stream, url, DocumentStore.DocumentFormat.BINARY);
+        dstore.setMetadata(url, "color","blue");
+
+
+        dstore.setMetadata(uri, "year", "1863");
+        dstore.get(uri1);
+        dstore.getMetadata(uri2, "year");
+        dstore.delete(uri);
+        dstore.undo();
+
+        dstore.deleteAll("freedom");
+
+        assertEquals(1, dstore.search("the").size());
+
+
+
+        dstore.setMaxDocumentCount(1);
+
+
+        assertEquals(1, dstore.search("the").size());
+
+    }
  
     @Test
     void setMetadataError() throws IOException {
