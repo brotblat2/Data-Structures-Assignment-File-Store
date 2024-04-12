@@ -334,6 +334,9 @@ public class DocumentStoreImpl implements DocumentStore {
     @Override
     public List<Document> search(String keyword) {
        List<Document> lis=  documentTrie.getSorted(keyword, new DocumentComparator(keyword));
+
+       if (lis==null || lis.isEmpty()) return new ArrayList<>();
+
        for (Document d:lis){
            d.setLastUseTime(System.nanoTime());
            documentMinHeap.reHeapify(d);
@@ -653,7 +656,7 @@ public class DocumentStoreImpl implements DocumentStore {
             for (Document d:docList) {
                 if (d.getWords() != null) {
                     for (String word : d.getWords()) {
-                        if (documentTrie.get(word)!=null) documentTrie.delete(word, d);
+                        if (documentTrie.get(word).contains(d)) documentTrie.delete(word, d);
                     }
                 }
             }
@@ -699,46 +702,30 @@ public class DocumentStoreImpl implements DocumentStore {
         return uriList;
     }
 
-    private void removeFromStack(URI uri) {
-        StackImpl<Undoable> temp = new StackImpl<>();
-        while (commandStack.size()!=0){
-            if (commandStack.peek()==null) commandStack.pop();
-            else if (!(hasURI(commandStack.peek(), uri))){
-                temp.push(commandStack.pop());
-            }
-            else {
-                if (commandStack.peek() instanceof CommandSet) {
-                    CommandSet<URI> cs = (CommandSet<URI>) commandStack.peek();
-                    while(cs.containsTarget(uri)) cs.undo(uri);
-                    if (cs.size() != 0) temp.push(commandStack.peek());
-                }
-                commandStack.pop();
-            }
-        }
-
-        while(temp.size()!=0){
-            Undoable ud =temp.pop();
-            if (ud!=null) this.commandStack.push(ud);
-        }
-
-    }
-
     @Override
     public void setMaxDocumentBytes(int limit) {
         if(limit<1) throw new IllegalArgumentException();
         this.maxDocumentBytes=limit;
-        int b=this.getBytes();
-        while (b>limit){
-            Document d= documentMinHeap.remove();
-            removeFromStack(d.getKey());
-            if (this.store.get(d.getKey())!=null) this.store.put(d.getKey(),null);
-            if (d.getWords()!=null) {
+        int b=getBytes();
+        List<Document> docList=new ArrayList<>();
+        while (b>limit) {
+            Document d = documentMinHeap.remove();
+            if (d.getDocumentBinaryData() != null) b -= d.getDocumentBinaryData().length;
+            if (d.getDocumentTxt() != null) b -= d.getDocumentTxt().getBytes().length;
+            docList.add(d);
+        }
+
+        removeFromStackPastLimit(docList);
+
+        for(Document d: docList) {
+
+            if (d.getWords() != null) {
                 for (String word : d.getWords()) {
                     documentTrie.delete(word, d);
                 }
             }
-            if(d.getDocumentBinaryData()!=null) b-=d.getDocumentBinaryData().length;
-            if(d.getDocumentTxt()!=null) b-=d.getDocumentTxt().getBytes().length;
+
+            if (this.store.get(d.getKey()) != null) this.store.put(d.getKey(), null);
         }
 
     }
@@ -746,6 +733,7 @@ public class DocumentStoreImpl implements DocumentStore {
         if (this.maxDocumentCount>0) setMaxDocumentCount(this.maxDocumentCount);
         if (this.maxDocumentBytes>0) setMaxDocumentBytes(this.maxDocumentBytes);
     }
+
     private void deleteFromHeap(Document doc){
         if (doc==null) return;
         MinHeapImpl<Document> temp=new MinHeapImpl<>();

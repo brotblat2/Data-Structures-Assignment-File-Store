@@ -128,9 +128,24 @@ class DocumentStoreImplTest {
 
 
         assertEquals(1, dstore.search("the").size());
-
+        assertNull(dstore.get(url));
     }
- 
+    @Test
+    void checkHeapOrder3() throws IOException {
+        setUp();
+        URI url = URI.create("http://foxuu.com");
+        byte[] b = {1, 2, 3, 4};
+        ByteArrayInputStream stream = new ByteArrayInputStream(b);
+        dstore.put(stream, url, DocumentStore.DocumentFormat.BINARY);
+
+        dstore.setMaxDocumentBytes(4);
+
+
+        assertEquals(0, dstore.search("the").size());
+
+        assertNotNull(dstore.get(url));
+    }
+
     @Test
     void setMetadataError() throws IOException {
         URI uri = URI.create("http://fox.com");
