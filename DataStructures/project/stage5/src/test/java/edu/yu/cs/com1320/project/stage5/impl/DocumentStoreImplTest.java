@@ -145,7 +145,18 @@ class DocumentStoreImplTest {
 
         assertNotNull(dstore.get(url));
     }
+    @Test
+    void checkHeapOrder4() throws IOException {
+        setUp();
+        dstore.setMaxDocumentCount(2);
+        dstore.undo();
 
+        assertNull(dstore.get(uri));
+        assertNotNull(dstore.get(uri1));
+        assertNotNull(dstore.get(uri2));
+
+
+    }
     @Test
     void setMetadataError() throws IOException {
         URI uri = URI.create("http://fox.com");

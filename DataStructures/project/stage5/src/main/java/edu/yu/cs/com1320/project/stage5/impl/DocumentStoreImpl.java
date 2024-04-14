@@ -168,10 +168,14 @@ public class DocumentStoreImpl implements DocumentStore {
                 Document old=this.store.put(uri, oldDoc);
                 deleteFromHeap(old);
                 if (oldDoc!=null) {
-                    oldDoc.setLastUseTime(System.nanoTime());
-                    documentMinHeap.insert(this.store.get(uri));
-                    for (String word : oldDoc.getWords()) {
-                        documentTrie.put(word, d);
+                    if (oldDoc.getDocumentBinaryData()!=null && oldDoc.getDocumentBinaryData().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
+                    else if (  oldDoc.getDocumentTxt()!=null && oldDoc.getDocumentTxt().getBytes().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
+                    else {
+                        oldDoc.setLastUseTime(System.nanoTime());
+                        documentMinHeap.insert(this.store.get(uri));
+                        for (String word : oldDoc.getWords()) {
+                            documentTrie.put(word, d);
+                        }
                     }
                 }
                 for (String word : d.getWords()) {
@@ -194,10 +198,14 @@ public class DocumentStoreImpl implements DocumentStore {
 
         Consumer <URI> u = (squash) -> {
             deleteFromHeap(d);
-            this.store.put(uri, doc);
-            if (this.store.get(uri)!=null) {
-                this.store.get(uri).setLastUseTime(System.nanoTime());
-                documentMinHeap.insert(doc);
+            if (doc!=null && doc.getDocumentBinaryData()!=null && doc.getDocumentBinaryData().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
+            else if (doc!=null && doc.getDocumentTxt()!=null && doc.getDocumentTxt().getBytes().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
+            else {
+                this.store.put(uri, doc);
+                if (this.store.get(uri) != null) {
+                    this.store.get(uri).setLastUseTime(System.nanoTime());
+                    documentMinHeap.insert(doc);
+                }
             }
         };
         GenericCommand<URI> com=new GenericCommand<>(uri, u);
@@ -243,15 +251,19 @@ public class DocumentStoreImpl implements DocumentStore {
 
     private GenericCommand<URI> undoDeleteCommand(URI url, DocumentImpl doc) {
         Consumer<URI> u = (squash) -> {
-        this.store.put(url, doc);
-        this.store.get(url).setLastUseTime(System.nanoTime());
-        documentMinHeap.insert(doc);
-        for (String word : doc.getWords()) {
-            this.documentTrie.put(word, doc);
+        if (doc.getDocumentBinaryData()!=null && doc.getDocumentBinaryData().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
+        else if (doc.getDocumentTxt()!=null && doc.getDocumentTxt().getBytes().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
+        else {
+            this.store.put(url, doc);
+            this.store.get(url).setLastUseTime(System.nanoTime());
+            documentMinHeap.insert(doc);
+            for (String word : doc.getWords()) {
+                this.documentTrie.put(word, doc);
             }
-
+            makeSpace();
+        }
         };
-        makeSpace();
+
         GenericCommand<URI> com = new GenericCommand<>(url, u);
         return com;
     }
