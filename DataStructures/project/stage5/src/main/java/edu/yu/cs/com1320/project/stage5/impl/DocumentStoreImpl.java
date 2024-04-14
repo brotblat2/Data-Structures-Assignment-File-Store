@@ -1,3 +1,4 @@
+
 package edu.yu.cs.com1320.project.stage5.impl;
 
 import java.io.IOException;
@@ -165,22 +166,24 @@ public class DocumentStoreImpl implements DocumentStore {
             }
 
             Consumer<URI> u = (squash) -> {
-                Document old=this.store.put(uri, oldDoc);
-                deleteFromHeap(old);
-                if (oldDoc!=null) {
-                    if (oldDoc.getDocumentBinaryData()!=null && oldDoc.getDocumentBinaryData().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
-                    else if (  oldDoc.getDocumentTxt()!=null && oldDoc.getDocumentTxt().getBytes().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
+                Document newDoc=this.store.get(uri);
+
+                    if ((oldDoc!=null) && oldDoc.getDocumentBinaryData()!=null && oldDoc.getDocumentBinaryData().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
+                    else if ( (oldDoc!=null) && oldDoc.getDocumentTxt()!=null && oldDoc.getDocumentTxt().getBytes().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
                     else {
-                        oldDoc.setLastUseTime(System.nanoTime());
-                        documentMinHeap.insert(this.store.get(uri));
-                        for (String word : oldDoc.getWords()) {
-                            documentTrie.put(word, d);
+                        this.store.put(uri, oldDoc);
+                        if (oldDoc!=null) oldDoc.setLastUseTime(System.nanoTime());
+                        deleteFromHeap(newDoc);
+                        if (oldDoc!=null) documentMinHeap.insert(this.store.get(uri));
+                        if (oldDoc!=null) for (String word : oldDoc.getWords()) {
+                            documentTrie.put(word, oldDoc);
+                        }
+                        for (String word : newDoc.getWords()) {
+                            documentTrie.delete(word, newDoc);
                         }
                     }
-                }
-                for (String word : d.getWords()) {
-                    documentTrie.delete(word, d);
-                }
+
+
             };
             GenericCommand<URI> com = new GenericCommand<>(uri, u);
             commandStack.push(com);
@@ -189,22 +192,22 @@ public class DocumentStoreImpl implements DocumentStore {
 
     private void binaryPut(InputStream input, URI uri) throws IOException {
         byte[] b = input.readAllBytes();
-        DocumentImpl d= new DocumentImpl(uri, b);
-        DocumentImpl doc=this.store.put(uri, d);
-        deleteFromHeap(doc);
-        documentMinHeap.insert(d);
+        DocumentImpl newDoc= new DocumentImpl(uri, b);
+        DocumentImpl oldDoc=this.store.put(uri, newDoc);
+        deleteFromHeap(oldDoc);
+        documentMinHeap.insert(newDoc);
         this.store.get(uri).setLastUseTime(System.nanoTime());
 
 
         Consumer <URI> u = (squash) -> {
-            deleteFromHeap(d);
-            if (doc!=null && doc.getDocumentBinaryData()!=null && doc.getDocumentBinaryData().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
-            else if (doc!=null && doc.getDocumentTxt()!=null && doc.getDocumentTxt().getBytes().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
+            deleteFromHeap(newDoc);
+            if (oldDoc!=null && oldDoc.getDocumentBinaryData()!=null && oldDoc.getDocumentBinaryData().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
+            else if (oldDoc!=null && oldDoc.getDocumentTxt()!=null && oldDoc.getDocumentTxt().getBytes().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
             else {
-                this.store.put(uri, doc);
+                this.store.put(uri, oldDoc);
                 if (this.store.get(uri) != null) {
                     this.store.get(uri).setLastUseTime(System.nanoTime());
-                    documentMinHeap.insert(doc);
+                    documentMinHeap.insert(this.store.get(uri));
                 }
             }
         };
@@ -251,17 +254,17 @@ public class DocumentStoreImpl implements DocumentStore {
 
     private GenericCommand<URI> undoDeleteCommand(URI url, DocumentImpl doc) {
         Consumer<URI> u = (squash) -> {
-        if (doc.getDocumentBinaryData()!=null && doc.getDocumentBinaryData().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
-        else if (doc.getDocumentTxt()!=null && doc.getDocumentTxt().getBytes().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
-        else {
-            this.store.put(url, doc);
-            this.store.get(url).setLastUseTime(System.nanoTime());
-            documentMinHeap.insert(doc);
-            for (String word : doc.getWords()) {
-                this.documentTrie.put(word, doc);
+            if (doc.getDocumentBinaryData()!=null && doc.getDocumentBinaryData().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
+            else if (doc.getDocumentTxt()!=null && doc.getDocumentTxt().getBytes().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
+            else {
+                this.store.put(url, doc);
+                this.store.get(url).setLastUseTime(System.nanoTime());
+                documentMinHeap.insert(doc);
+                for (String word : doc.getWords()) {
+                    this.documentTrie.put(word, doc);
+                }
+                makeSpace();
             }
-            makeSpace();
-        }
         };
 
         GenericCommand<URI> com = new GenericCommand<>(url, u);
@@ -345,15 +348,15 @@ public class DocumentStoreImpl implements DocumentStore {
 
     @Override
     public List<Document> search(String keyword) {
-       List<Document> lis=  documentTrie.getSorted(keyword, new DocumentComparator(keyword));
+        List<Document> lis=  documentTrie.getSorted(keyword, new DocumentComparator(keyword));
 
-       if (lis==null || lis.isEmpty()) return new ArrayList<>();
+        if (lis==null || lis.isEmpty()) return new ArrayList<>();
 
-       for (Document d:lis){
-           d.setLastUseTime(System.nanoTime());
-           documentMinHeap.reHeapify(d);
-       }
-       return lis;
+        for (Document d:lis){
+            d.setLastUseTime(System.nanoTime());
+            documentMinHeap.reHeapify(d);
+        }
+        return lis;
     }
     /**
      * Retrieve all documents that contain text which starts with the given prefix
