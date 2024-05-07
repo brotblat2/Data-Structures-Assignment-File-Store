@@ -1,5 +1,5 @@
 
-package edu.yu.cs.com1320.project.stage5.impl;
+package edu.yu.cs.com1320.project.stage6.impl;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -7,32 +7,77 @@ import java.net.URI;
 import java.util.*;
 import java.util.function.Consumer;
 
-import edu.yu.cs.com1320.project.impl.HashTableImpl;
-import edu.yu.cs.com1320.project.impl.MinHeapImpl;
-import edu.yu.cs.com1320.project.impl.StackImpl;
-import edu.yu.cs.com1320.project.impl.TrieImpl;
-import edu.yu.cs.com1320.project.stage5.Document;
-import edu.yu.cs.com1320.project.stage5.DocumentStore;
+import edu.yu.cs.com1320.project.impl.*;
+import edu.yu.cs.com1320.project.stage6.Document;
+import edu.yu.cs.com1320.project.stage6.DocumentStore;
 import edu.yu.cs.com1320.project.undo.CommandSet;
 import edu.yu.cs.com1320.project.undo.GenericCommand;
 import edu.yu.cs.com1320.project.undo.Undoable;
 
+import javax.print.Doc;
 
 public class DocumentStoreImpl implements DocumentStore {
 
-    private HashTableImpl<URI, DocumentImpl> store;
+    private BTreeImpl<URI, DocumentImpl> store;
     private StackImpl<Undoable> commandStack;
-    private TrieImpl<Document> documentTrie;
-    private MinHeapImpl<Document> documentMinHeap;
+    private TrieImpl<DocSub> documentTrie;
+    private MinHeapImpl<DocSub> documentMinHeap;
+    private int docCount;
+    private int byteCount;
     private int maxDocumentCount;
     private int maxDocumentBytes;
 
 
     public DocumentStoreImpl(){
         this.commandStack= new StackImpl<>();
-        this.store= new HashTableImpl<>();
+        this.store= new BTreeImpl<>();
         this.documentTrie=new TrieImpl<>();
         this.documentMinHeap= new MinHeapImpl<>();
+    }
+
+    private class DocSub implements Comparable<DocSub> {
+        URI uri;
+        private DocSub(DocumentImpl doc){
+            this.uri=doc.getKey();
+        }
+        private DocSub(URI url){
+            this.uri=url;
+        }
+        private DocumentImpl getDoc(){
+            return store.get(this.uri);
+        }
+        private long getLastUseTime(){
+            return store.get(uri).getLastUseTime();
+        }
+        private URI getKey(){
+            return this.uri;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = uri.hashCode();
+            result = 31 * result + (store.get(uri).getDocumentTxt() != null ? store.get(uri).getDocumentTxt().hashCode() : 0);
+            result = 31 * result + Arrays.hashCode(store.get(uri).getDocumentBinaryData());
+            return Math.abs(result);
+        }
+
+        @Override
+        public boolean equals(Object o){
+            if (this.hashCode()==o.hashCode()){
+                return true;
+            }
+            else{
+                return false;
+            }
+        }
+
+        @Override
+        public int compareTo(DocSub o) {
+            long dif = this.getLastUseTime() - o.getLastUseTime();
+            if (dif < 0) return -1;
+            else if (dif > 0) return 1;
+            else return 0;
+        }
     }
 
     /**
@@ -61,17 +106,16 @@ public class DocumentStoreImpl implements DocumentStore {
         }
         String data= this.store.get(uri).setMetadataValue(key, value);
         this.store.get(uri).setLastUseTime(System.nanoTime());
-        documentMinHeap.reHeapify(this.store.get(uri));
+        documentMinHeap.reHeapify(new DocSub(uri));
 
         Consumer<URI> u = (squash) -> {
             this.store.get(uri).setMetadataValue(key, data);
             this.store.get(uri).setLastUseTime(System.nanoTime());
-            documentMinHeap.reHeapify(this.store.get(uri));
+            documentMinHeap.reHeapify(new DocSub(uri));
         };
 
         GenericCommand<URI> com=new GenericCommand<URI>(uri, u);
         commandStack.push(com);
-
         return data;
     }
 
@@ -95,7 +139,7 @@ public class DocumentStoreImpl implements DocumentStore {
             throw new IllegalArgumentException("Inputted key is empty");
         }
         this.store.get(uri).setLastUseTime(System.nanoTime());
-        documentMinHeap.reHeapify(this.store.get(uri));
+        documentMinHeap.reHeapify(new DocSub(uri));
         return this.store.get(uri).getMetadataValue(key);
 
     }
@@ -147,40 +191,65 @@ public class DocumentStoreImpl implements DocumentStore {
             byte[] b = input.readAllBytes();
             String s = new String(b);
             DocumentImpl d = new DocumentImpl(uri, s);
+            byteCount+=b.length;
+            docCount++;
 
+            DocumentImpl oldDoc =this.store.get(uri);
+
+            if (oldDoc!=null) {
+                DocSub ods= new DocSub(oldDoc);
+                for (String word : oldDoc.getWords()) {
+                    documentTrie.delete(word,ods);
+                }
+                deleteFromHeap(oldDoc);
+            }
+
+            this.store.put(uri, d);
             //put time in to TRIE
             Set<String> wordSet = d.getWords();
+            DocSub ds= new DocSub(d);
+
+
             for (String word : wordSet) {
-                documentTrie.put(word, d);
+                documentTrie.put(word, ds);
             }
-            DocumentImpl oldDoc = this.store.put(uri, d);
+
             this.store.get(uri).setLastUseTime(System.nanoTime());
-            deleteFromHeap(oldDoc);
-            documentMinHeap.insert(d);
-            documentMinHeap.reHeapify(this.store.get(uri));
-            if (oldDoc!=null) {
-                for (String word : oldDoc.getWords()) {
-                    documentTrie.delete(word, oldDoc);
-                }
-            }
+            documentMinHeap.insert(ds);
+            documentMinHeap.reHeapify(ds);
+
+
 
             Consumer<URI> u = (squash) -> {
                 Document newDoc=this.store.get(uri);
+                //this first if is else if is just making sure that we are under the cap
+                if ((oldDoc!=null) && oldDoc.getDocumentBinaryData()!=null && oldDoc.getDocumentBinaryData().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
+                else if ( (oldDoc!=null) && oldDoc.getDocumentTxt()!=null && oldDoc.getDocumentTxt().getBytes().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
 
-                    if ((oldDoc!=null) && oldDoc.getDocumentBinaryData()!=null && oldDoc.getDocumentBinaryData().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
-                    else if ( (oldDoc!=null) && oldDoc.getDocumentTxt()!=null && oldDoc.getDocumentTxt().getBytes().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
-                    else {
-                        this.store.put(uri, oldDoc);
-                        if (oldDoc!=null) oldDoc.setLastUseTime(System.nanoTime());
-                        deleteFromHeap(newDoc);
-                        if (oldDoc!=null) documentMinHeap.insert(this.store.get(uri));
-                        if (oldDoc!=null) for (String word : oldDoc.getWords()) {
-                            documentTrie.put(word, oldDoc);
-                        }
-                        for (String word : newDoc.getWords()) {
-                            documentTrie.delete(word, newDoc);
+                else {
+
+                    deleteFromHeap(newDoc);
+
+                    for (String word : newDoc.getWords()) {
+                        documentTrie.delete(word, ds);
+                    }
+                    this.byteCount-=b.length;
+                    if (oldDoc==null) this.docCount--;
+
+                    this.store.put(uri, oldDoc);
+
+                    DocSub ods= new DocSub(oldDoc);
+
+                    if (this.store.get(uri) != null) {
+                        this.store.get(uri).setLastUseTime(System.nanoTime());
+                        documentMinHeap.insert(ods);
+                        this.byteCount+=this.getDocBytes(ods.getDoc());
+                        for (String word : ods.getDoc().getWords()) {
+                            documentTrie.put(word, ods);
                         }
                     }
+
+                }
 
 
             };
@@ -192,11 +261,17 @@ public class DocumentStoreImpl implements DocumentStore {
     private void binaryPut(InputStream input, URI uri) throws IOException {
         byte[] b = input.readAllBytes();
         DocumentImpl newDoc= new DocumentImpl(uri, b);
-        DocumentImpl oldDoc=this.store.put(uri, newDoc);
-        deleteFromHeap(oldDoc);
-        documentMinHeap.insert(newDoc);
-        this.store.get(uri).setLastUseTime(System.nanoTime());
 
+        DocumentImpl oldDoc=this.store.get(uri);
+        //don't think I need to touch the heap honestly, but at least I reheapify
+        deleteFromHeap(oldDoc);
+
+        this.store.put(uri, newDoc);
+        documentMinHeap.insert(new DocSub(newDoc));
+
+        this.store.get(uri).setLastUseTime(System.nanoTime());
+        byteCount+=b.length;
+        docCount++;
 
         Consumer <URI> u = (squash) -> {
             if (oldDoc!=null && oldDoc.getDocumentBinaryData()!=null && oldDoc.getDocumentBinaryData().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
@@ -204,9 +279,14 @@ public class DocumentStoreImpl implements DocumentStore {
             else {
                 deleteFromHeap(newDoc);
                 this.store.put(uri, oldDoc);
+                this.byteCount-=this.getDocBytes(newDoc);
                 if (this.store.get(uri) != null) {
                     this.store.get(uri).setLastUseTime(System.nanoTime());
-                    documentMinHeap.insert(this.store.get(uri));
+                    documentMinHeap.insert(new DocSub(uri));
+                    this.byteCount+=this.getDocBytes(oldDoc);
+                }
+                else{
+                    this.docCount--;
                 }
             }
         };
@@ -222,7 +302,7 @@ public class DocumentStoreImpl implements DocumentStore {
     public Document get(URI url){
         if (this.store.get(url)!=null) {
             this.store.get(url).setLastUseTime(System.nanoTime());
-            documentMinHeap.reHeapify(this.store.get(url));
+            documentMinHeap.reHeapify(new DocSub(url));
         }
         return this.store.get(url);
     }
@@ -239,11 +319,17 @@ public class DocumentStoreImpl implements DocumentStore {
         DocumentImpl doc = this.store.get(url);
         doc.setLastUseTime(System.nanoTime());
         deleteFromHeap(doc);
+
         Set<String> words = doc.getWords();
-        this.store.put(url, null);
         for (String word : words) {
-            documentTrie.delete(word, doc);
+            documentTrie.delete(word, new DocSub(doc));
         }
+
+        docCount--;
+        byteCount-=this.getDocBytes(doc);
+
+        this.store.put(url, null);
+
 
         GenericCommand<URI> com = undoDeleteCommand(url, doc);
         commandStack.push(com);
@@ -257,11 +343,14 @@ public class DocumentStoreImpl implements DocumentStore {
             else if (doc.getDocumentTxt()!=null && doc.getDocumentTxt().getBytes().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
             else {
                 this.store.put(url, doc);
+                DocSub docSub=new DocSub(doc);
                 this.store.get(url).setLastUseTime(System.nanoTime());
-                documentMinHeap.insert(doc);
+                documentMinHeap.insert(docSub);
                 for (String word : doc.getWords()) {
-                    this.documentTrie.put(word, doc);
+                    this.documentTrie.put(word, docSub);
                 }
+                docCount++;
+                byteCount+=this.getDocBytes(doc);
                 makeSpace();
             }
         };
@@ -347,6 +436,7 @@ public class DocumentStoreImpl implements DocumentStore {
 
     @Override
     public List<Document> search(String keyword) {
+       //make a comparator
         List<Document> lis=  documentTrie.getSorted(keyword, new DocumentComparator(keyword));
 
         if (lis==null || lis.isEmpty()) return new ArrayList<>();
@@ -406,6 +496,8 @@ public class DocumentStoreImpl implements DocumentStore {
                 documentTrie.delete(s,d);
             }
             deleteFromHeap(d);
+            byteCount-=getDocBytes((DocumentImpl) d);
+            docCount--;
         }
 
         for(URI u:oldUris){
@@ -443,6 +535,8 @@ public class DocumentStoreImpl implements DocumentStore {
                 documentTrie.delete(s,d);
             }
             deleteFromHeap(d);
+            byteCount-=getDocBytes((DocumentImpl) d);
+            docCount--;
         }
 
         for(URI u:oldUris){
@@ -566,6 +660,8 @@ public class DocumentStoreImpl implements DocumentStore {
                 documentTrie.delete(s,d);
             }
             deleteFromHeap(d);
+            byteCount-=getDocBytes((DocumentImpl) d);
+            docCount--;
         }
 
         for(URI u:oldUris){
@@ -602,6 +698,8 @@ public class DocumentStoreImpl implements DocumentStore {
                 documentTrie.delete(s,d);
             }
             deleteFromHeap(d);
+            byteCount-=getDocBytes((DocumentImpl) d);
+            docCount--;
         }
 
         for(URI u:oldUris){
@@ -638,6 +736,8 @@ public class DocumentStoreImpl implements DocumentStore {
                 documentTrie.delete(s,d);
             }
             deleteFromHeap(d);
+            byteCount-=getDocBytes((DocumentImpl) d);
+            docCount--;
         }
 
         for(URI u:oldUris){
@@ -653,10 +753,10 @@ public class DocumentStoreImpl implements DocumentStore {
         if(limit<1) throw new IllegalArgumentException();
         this.maxDocumentCount=limit;
 
-        if (this.store.size()>limit){
+        if (this.docCount>limit){
 
             List<Document> docList= new ArrayList<>();
-            for (int i=0; i<store.size()-limit; i++){
+            for (int i=0; i<this.docCount-limit; i++){
                 docList.add(documentMinHeap.remove());
             }
 
@@ -720,7 +820,7 @@ public class DocumentStoreImpl implements DocumentStore {
     public void setMaxDocumentBytes(int limit) {
         if(limit<1) throw new IllegalArgumentException();
         this.maxDocumentBytes=limit;
-        int b=getBytes();
+        int b=this.byteCount;
         List<Document> docList=new ArrayList<>();
         while (b>limit) {
             Document d = documentMinHeap.remove();
@@ -760,15 +860,17 @@ public class DocumentStoreImpl implements DocumentStore {
         this.documentMinHeap=temp;
     }
 
-    private int getBytes(){
-        int b=0;
-        for (URI uri:this.store.keySet()){
-            Document document=this.store.get(uri);
-            if(document.getDocumentBinaryData()!=null) b+=document.getDocumentBinaryData().length;
-            if(document.getDocumentTxt()!=null) b+=document.getDocumentTxt().getBytes().length;
+
+    private int getDocBytes(DocumentImpl doc) {
+        if (doc==null) return 0;
+        if (doc.getWords().isEmpty()){
+            return doc.getDocumentBinaryData().length;
         }
-        return b;
+        else{
+            return doc.getDocumentTxt().getBytes().length;
+        }
     }
+
 
     private class DocumentComparator implements Comparator<Document> {
         private String word;
