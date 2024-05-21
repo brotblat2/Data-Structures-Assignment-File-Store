@@ -12,7 +12,7 @@ public class DocumentImpl implements Document {
     private String txt;
     private byte[] binaryData;
     private HashMap<String, String> meta;
-    private HashMap<String, Integer> wordCounts;
+    private Map<String, Integer> wordCounts;
     private long lastUseTime;
 
 
@@ -25,6 +25,17 @@ public class DocumentImpl implements Document {
         this.txt=txt;
         this.meta= new HashMap<>();
         this.wordCounts=this.wordCountTable();
+        this.lastUseTime=System.nanoTime();
+    }
+
+    public DocumentImpl(URI uri, String txt, Map<String, Integer> wordCountMap){
+        if (uri==null || uri.toString().isEmpty() || txt==null || txt.isEmpty()){
+            throw new IllegalArgumentException("Empty or null URI or value");
+        }
+        this.uri=uri;
+        this.txt=txt;
+        this.meta= new HashMap<>();
+        this.wordCounts=wordCountMap;
         this.lastUseTime=System.nanoTime();
     }
 
@@ -182,7 +193,7 @@ public class DocumentImpl implements Document {
 
     @Override
     public HashMap<String, Integer> getWordMap() {
-        return wordCounts;
+        return (HashMap<String, Integer>) wordCounts;
     }
 
     @Override

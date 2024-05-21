@@ -6,19 +6,24 @@ import edu.yu.cs.com1320.project.stage6.PersistenceManager;
 import java.io.IOException;
 import java.util.Arrays;
 
+
+//clarify if this needs to use parameterized types or could be assignment specific
+
 public class BTreeImpl<Key extends Comparable<Key>, Value> implements BTree<Key, Value> {
 
     private static final int MAX = 4;
     private Node root; //root of the B-tree
 
+    PersistenceManager<Key, Value> pm;
+
     private Node leftMostExternalNode;
     private int height; //height of the B-tree
     private int n; //number of key-value pairs in the B-tre
 
-    private class Node
+    private static final class Node
     {
         private int entryCount; // number of entries
-        private Entry[] entries; // the array of children
+        private Entry[] entries = new Entry[MAX]; // the array of children
         private Node next;
         private Node previous;
 
@@ -26,7 +31,6 @@ public class BTreeImpl<Key extends Comparable<Key>, Value> implements BTree<Key,
         private Node(int k)
         {
             this.entryCount = k;
-            this.entries=(Entry[])new Object[MAX];
         }
 
         private void setNext(Node next)
@@ -55,23 +59,23 @@ public class BTreeImpl<Key extends Comparable<Key>, Value> implements BTree<Key,
 
     //internal nodes: only use key and child
     //external nodes: only use key and value
-    private class Entry
+    private static class Entry
     {
-        private Key key;
-        private Value val;
+        private Comparable key;
+        private Object val;
         private Node child;
 
-        public Entry(Key key, Value val, Node child)
+        public Entry(Comparable key, Object val, Node child)
         {
             this.key = key;
             this.val = val;
             this.child = child;
         }
-        public Value getValue()
+        public Object getValue()
         {
             return this.val;
         }
-        public Key getKey()
+        public Comparable getKey()
         {
             return this.key;
         }
@@ -86,15 +90,27 @@ public class BTreeImpl<Key extends Comparable<Key>, Value> implements BTree<Key,
     {
         if (key == null)
         {
-            throw new IllegalArgumentException("argument to get() is null");
+            throw new IllegalArgumentException();
         }
 
         Entry entry = this.get(this.root, key, this.height);
 
         if(entry != null)
         {
-            return entry.val;
+            Value v= (Value) entry.val;
             //For this assignment, we are then going to have to go to disk and get it back from there, as we have the entry but not the contents
+            if (v!=null) return v;
+            else {
+                try {
+                    Value val=pm.deserialize(key);
+                    pm.delete(key);
+                    this.put(key, val);
+                    return val;//piazza this
+
+                } catch (IOException e) {
+                    return null;
+                }
+            }
         }
         return null;
     }
@@ -127,8 +143,8 @@ public class BTreeImpl<Key extends Comparable<Key>, Value> implements BTree<Key,
                 //are looking for is less than the next key, i.e. the
                 //desired key must be in the subtree below the current entry),
                 //then recurse into the current entry’s child
-                if (j + 1 == currentNode.entryCount ||  key.compareTo(entries[j + 1].key)<0)
-                {
+                if (j + 1 == currentNode.entryCount || key.compareTo((Key)entries[j + 1].getKey()) < 0) {
+
                     return this.get(entries[j].child, key, height - 1);
                 }
             }
@@ -144,12 +160,21 @@ public class BTreeImpl<Key extends Comparable<Key>, Value> implements BTree<Key,
         {
             throw new IllegalArgumentException("argument key to put() is null");
         }
+
         //if the key already exists in the b-tree, simply replace the value
         Entry alreadyThere = this.get(this.root, key, this.height);
-        if(alreadyThere != null)
-        {
-            Value temp=alreadyThere.val;
+
+        if(alreadyThere != null) {
+            Value temp=(Value)alreadyThere.val;
             alreadyThere.val = val;
+            if (temp==null){
+                try {
+                    pm.delete(key);
+                } catch (IOException e) {
+                    return null;
+                }
+            }
+
             return temp;
         }
 
@@ -290,11 +315,16 @@ public class BTreeImpl<Key extends Comparable<Key>, Value> implements BTree<Key,
 
     @Override
     public void moveToDisk(Key k) throws IOException {
+        pm.serialize(k, this.get(k));
+        this.put(k, null);
 
     }
 
     @Override
     public void setPersistenceManager(PersistenceManager<Key, Value> pm) {
-
+        this.pm=pm;
     }
+
+
 }
+
