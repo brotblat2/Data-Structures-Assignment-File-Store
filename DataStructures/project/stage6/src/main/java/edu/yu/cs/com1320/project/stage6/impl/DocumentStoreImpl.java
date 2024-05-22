@@ -250,7 +250,8 @@ public class DocumentStoreImpl implements DocumentStore {
             String s = new String(b);
             DocumentImpl d = new DocumentImpl(uri, s);
 
-            Document oldDoc =this.store.get(uri);
+            //let's fix this
+            Document oldDoc =this.get(uri);
 
             if (oldDoc!=null) {
                 DocSub ods= new DocSub(oldDoc);
@@ -260,12 +261,17 @@ public class DocumentStoreImpl implements DocumentStore {
                 deleteFromHeap(oldDoc);
                 byteCount-=getDocBytes(oldDoc);
                 docCount--;
+
+                for (String key: oldDoc.getMetadata().keySet())
+                    addMetaNode(metaMap, key, new MetaNode(key,null,uri));
             }
 
             this.store.put(uri, d);
             //put time in to TRIE
             Set<String> wordSet = d.getWords();
             DocSub ds= new DocSub(d);
+
+
 
 
             for (String word : wordSet)
@@ -276,7 +282,7 @@ public class DocumentStoreImpl implements DocumentStore {
                 addMetaNode(metaMap, key, new MetaNode(key,d.getMetadataValue(key),uri));
 
 
-            this.store.get(uri).setLastUseTime(System.nanoTime());
+            d.setLastUseTime(System.nanoTime());
             updateHeapAndBtreeStorage(d);
 
 
@@ -296,9 +302,9 @@ public class DocumentStoreImpl implements DocumentStore {
                     }
                     for (String key: d.getMetadata().keySet())
                         addMetaNode(metaMap, key, new MetaNode(key,null,uri));
+
                     if (oldDoc != null) {
-                        for (String key: oldDoc.getMetadata().keySet())
-                            addMetaNode(metaMap, key, new MetaNode(key,oldDoc.getMetadataValue(key),uri));
+
                     }
 
 
@@ -318,6 +324,8 @@ public class DocumentStoreImpl implements DocumentStore {
                         if (oldDoc.getWords()!=null) for (String word : ods.getDoc().getWords()) {
                             documentTrie.put(word, ods);
                         }
+                        if (oldDoc.getMetadata()!=null) for (String key: oldDoc.getMetadata().keySet())
+                            addMetaNode(metaMap, key, new MetaNode(key,oldDoc.getMetadataValue(key),uri));
                     }
 
                 }
@@ -333,9 +341,21 @@ public class DocumentStoreImpl implements DocumentStore {
         byte[] b = input.readAllBytes();
         DocumentImpl newDoc= new DocumentImpl(uri, b);
 
-        Document oldDoc=this.store.get(uri);
+        Document oldDoc=this.get(uri);
         //don't think I need to touch the heap honestly, but at least I reheapify
-        if (oldDoc!=null)deleteFromHeap(oldDoc);
+        if (oldDoc!=null) {
+            DocSub ods= new DocSub(oldDoc);
+            for (String word : oldDoc.getWords()) {
+                documentTrie.delete(word,ods);
+            }
+            deleteFromHeap(oldDoc);
+            byteCount-=getDocBytes(oldDoc);
+            docCount--;
+
+            for (String key: oldDoc.getMetadata().keySet())
+                addMetaNode(metaMap, key, new MetaNode(key,null,uri));
+        }
+
         this.store.put(uri, newDoc);
         newDoc.setLastUseTime(System.nanoTime());
         updateHeapAndBtreeStorage(newDoc);
@@ -518,7 +538,7 @@ public class DocumentStoreImpl implements DocumentStore {
 
     @Override
     public List<Document> search(String keyword) {
-       //make a comparator
+        //make a comparator
         List<DocSub> list=  documentTrie.getSorted(keyword, new DocSubComparator(keyword));
         if (list==null || list.isEmpty()) return new ArrayList<>();
 
@@ -731,7 +751,7 @@ public class DocumentStoreImpl implements DocumentStore {
         return docsList;
     }
 
-//UP TO HERE!!!
+    //UP TO HERE!!!
     private List<URI> privateSearchByMetadata(Map<String, String> keysValues) {
         if (keysValues.isEmpty()) return new ArrayList<>();
 
@@ -1083,7 +1103,7 @@ public class DocumentStoreImpl implements DocumentStore {
         @Override
         public int compare(DocSub o1, DocSub o2) {
             //if (o1.getDoc()==null || o1.getDoc()==null)
-                //this is a guess- maybe ask on Piazza
+            //this is a guess- maybe ask on Piazza
             return Integer.compare( o1.getDoc().wordCount(word),o2.getDoc().wordCount(word))*-1;
         }
     }

@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
@@ -26,7 +27,13 @@ class DocumentStoreImplTest {
 
     @BeforeEach
     void setUp() throws IOException {
-        dstore = new DocumentStoreImpl();
+
+
+        File testing=new File("testing");
+        for (File file : testing.listFiles()) {
+            file.delete();
+        }
+        dstore = new DocumentStoreImpl(testing);
 
         uri = URI.create("http://GA.com");
         String GA = "Four score and seven years ago our fathers brought forth on this continent a new nation, conceived in liberty, and dedicated to the proposition that all men are created equal. “Now we are engaged in a great civil war, testing whether that nation, or any nation so conceived and so dedicated, can long endure. We are met on a great battlefield of that war. We have come to dedicate a portion of that field as a final resting place for those who here gave their lives that that nation might live. It is altogether fitting and proper that we should do this. “But in a larger sense we cannot dedicate, we cannot consecrate, we cannot hallow this ground. The brave men, living and dead, who struggled here have consecrated it, far above our poor power to add or detract. The world will little note, nor long remember, what we say here, but it can never forget what they did here. It is for us the living, rather, to be dedicated here to the unfinished work which they who fought here have thus far so nobly advanced. It is rather for us to be here dedicated to the great task remaining before us,that from these honored dead we take increased devotion to that cause for which they gave the last full measure of devotion, that we here highly resolve that these dead shall not have died in vain, that this nation, under God, shall have a new birth of freedom, and that government of the people, by the people, for the people, shall not perish from the earth.";
@@ -53,7 +60,6 @@ class DocumentStoreImplTest {
         dstore.put(stream2, uri2, DocumentStore.DocumentFormat.TXT);
         dstore.setMetadata(uri2, "year", "1789");
         dstore.setMetadata(uri2, "color", "white");
-
     }
     @Test
     void checkHeapOrder() throws IOException {
@@ -74,34 +80,12 @@ class DocumentStoreImplTest {
         dstore.setMetadata(url, "color","blue");
 
 
-
-
         dstore.setMaxDocumentCount(1);
-
-        assertThrows(IllegalStateException.class, () -> {
-            dstore.undo (uri);
-        });
-
-        assertThrows(IllegalStateException.class, () -> {
-            dstore.undo (uri2);
-        });
-        assertThrows(IllegalStateException.class, () -> {
-            dstore.undo (uri2);
-        });
-        assertThrows(IllegalStateException.class, () -> {
-            dstore.undo (uri2);
-        });
-
-        assertThrows(IllegalStateException.class, () -> {
-            dstore.undo (uri);
-        });
-
-        assertThrows(IllegalStateException.class, () -> {
-            dstore.undo (uri2);
-        });
-
-
-        assertEquals(0, dstore.search("the").size());
+        assertEquals(3, dstore.search("the").size());
+        String s=url.toString().substring(7);
+        s+=".json";
+        s="testing/" + s;
+        assertTrue(Files.deleteIfExists(Path.of(s)));
     }
 
     @Test
@@ -143,24 +127,23 @@ class DocumentStoreImplTest {
         dstore.setMaxDocumentBytes(4);
 
 
-        assertEquals(0, dstore.search("the").size());
+        assertEquals(3, dstore.search("the").size());
 
         assertNotNull(dstore.get(url));
     }
     @Test
     void checkHeapOrder4() throws IOException {
         setUp();
-        dstore.setMaxDocumentCount(2);
-        dstore.undo();
+        dstore.setMaxDocumentCount(1);
 
-        String s=uri.toString().substring(7);
+        String s="testing"+ (File.separator) + uri.toString().substring(7);
         s+=".json";
+
         assertTrue(Files.deleteIfExists(Path.of(s)));
 
         assertNull(dstore.get(uri));
         assertNotNull(dstore.get(uri1));
         assertNotNull(dstore.get(uri2));
-
 
     }
     @Test
@@ -838,7 +821,7 @@ class DocumentStoreImplTest {
     @Test
     void put() throws IOException {
         setUp();
-        URI uriT = URI.create("http://example.com");
+        URI uriT = URI.create("http://example/flyingfish.com");
         String s= "the hello";
         byte[] bytes = s.getBytes();
         ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
@@ -846,11 +829,64 @@ class DocumentStoreImplTest {
         assertEquals(dstore.get(uriT).getDocumentTxt(), s);
         assertEquals(1,dstore.search("hello").size());
         dstore.setMaxDocumentCount(1);
-        assertEquals(4,dstore.searchByPrefix("").size());
         dstore.undo();
-        assertNull(dstore.get(uriT));
+        assertEquals(3,dstore.searchByPrefix("").size());
+        assertFalse(dstore.delete(uriT));
+        assertNotNull(dstore.get(uri));
         assertEquals(0,dstore.search("hello").size());
 
+    }
+
+    @Test
+    void put2() throws IOException {
+        setUp();
+        URI uriT = URI.create("http://example.com");
+        String s= "the hello";
+        byte[] bytes = s.getBytes();
+        ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
+        dstore.setMaxDocumentCount(1);
+        dstore.put(stream,uriT, DocumentStore.DocumentFormat.TXT );
+        assertEquals(dstore.get(uriT).getDocumentTxt(), s);
+        assertEquals(1,dstore.search("hello").size());
+        assertNotNull(dstore.get(uri));
+
+        dstore.undo();
+        assertEquals(3,dstore.searchByPrefix("").size());
+        assertFalse(dstore.delete(uriT));
+        assertEquals(0,dstore.search("hello").size());
+    }
+    @Test
+    void put3() throws IOException {
+        setUp();
+        dstore.setMaxDocumentCount(1);
+        dstore.get(uri);
+        dstore.get(uri1);
+        String s= "the hello";
+        byte[] bytes = s.getBytes();
+        ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
+        dstore.put(stream,uri2, DocumentStore.DocumentFormat.TXT );
+        dstore.delete(uri);
+
+
+        assertEquals(2,dstore.searchByPrefix("").size());
+        assertEquals(1,dstore.search("hello").size());
+    }
+
+    @Test
+    void put7() throws IOException {
+        setUp();
+        dstore.setMaxDocumentCount(1);
+        dstore.get(uri);
+        dstore.get(uri1);
+        String s= "the hello";
+        byte[] bytes = s.getBytes();
+        ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
+        dstore.put(stream,uri2, DocumentStore.DocumentFormat.BINARY );
+        dstore.delete(uri);
+
+
+        assertEquals(1,dstore.searchByPrefix("").size());
+        assertEquals(0,dstore.search("hello").size());
     }
 
     @Test

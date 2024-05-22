@@ -8,6 +8,7 @@ import javax.xml.bind.DatatypeConverter;
 import java.io.*;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
@@ -149,7 +150,11 @@ public class DocumentPersistenceManager implements PersistenceManager<URI, Docum
         String pathString= uri.toString().substring(7);
         pathString+=".json";
         pathString=pathString.replace("/", File.separator);
-        return Files.deleteIfExists(Paths.get(pathString));
+        if (baseDir!=null){
+            Path baseDirPath = Paths.get(baseDir.getAbsolutePath(), pathString);
+            return Files.deleteIfExists(baseDirPath);
+        }
+        else return Files.deleteIfExists(Paths.get(pathString));
     }
 
 }

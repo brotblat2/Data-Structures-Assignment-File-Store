@@ -35,7 +35,10 @@ public class DocumentImpl implements Document {
         this.uri=uri;
         this.txt=txt;
         this.meta= new HashMap<>();
-        this.wordCounts=wordCountMap;
+        if (wordCountMap==null) this.wordCounts=this.wordCountTable();
+
+        else this.wordCounts=wordCountMap;
+
         this.lastUseTime=System.nanoTime();
     }
 
