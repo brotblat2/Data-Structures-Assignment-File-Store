@@ -94,7 +94,7 @@ class DocumentImplTest {
         doc.setMetadataValue("key1" , "okey dokey");
         doc.setMetadataValue("key2", "okey dokey");
 
-        HashTableImpl<String, String> htable= doc.getMetadata();
+        HashMap<String, String> htable= doc.getMetadata();
         doc.setMetadataValue("key1", "switched it");
         assertEquals(htable.size(), doc.getMetadata().size());
     }

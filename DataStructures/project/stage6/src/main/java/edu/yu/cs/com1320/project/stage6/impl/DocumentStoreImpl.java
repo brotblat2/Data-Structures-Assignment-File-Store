@@ -238,7 +238,6 @@ public class DocumentStoreImpl implements DocumentStore {
 
         putImple(input, uri, format);
 
-        makeSpace();
 
         return x;
     }
@@ -701,11 +700,7 @@ public class DocumentStoreImpl implements DocumentStore {
                 return;
             }
 
-            for (MetaNode m: set){
-                if (m.uri.toString().equals(mn.uri.toString())){
-                    set.remove(m);
-                }
-            }
+            set.removeIf(m -> m.uri.toString().equals(mn.uri.toString()));
             return;
 
         }
@@ -957,94 +952,81 @@ public class DocumentStoreImpl implements DocumentStore {
         this.maxDocumentCount=limit;
 
         if (this.docCount>limit){
-
+            int p=this.docCount-limit;
             List<Document> docList= new ArrayList<>();
-            for (int i=0; i<this.docCount-limit; i++){
-                docList.add(documentMinHeap.remove().getDoc());
-            }
-
-            List<URI> uriList= removeFromStackPastLimit(docList);
-
-            for (Document d:docList) {
-                if (d.getWords() != null) {
-                    for (String word : d.getWords()) {
-                        DocSub docSub=new DocSub(d.getKey());
-                        if (documentTrie.get(word).contains(docSub)) documentTrie.delete(word, docSub);
-                    }
+            for (int i=0; i<p; i++){
+                try {
+                    Document d= documentMinHeap.remove().getDoc();
+                    this.docCount--;
+                    this.byteCount-=getDocBytes(d);
+                    store.moveToDisk(d.getKey());
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
             }
-
-            for (URI url:uriList){
-                if (this.store.get(url)!=null) this.store.put(url,null);
-            }
-
 
         }
     }
 
 
-    private List<URI> removeFromStackPastLimit(List<Document> docList) {
-        List<URI> uriList=new ArrayList<>();
-
-        for (Document doc : docList){
-            uriList.add(doc.getKey());
-        }
-
-        StackImpl<Undoable> temp= new StackImpl<>();
-
-        while(commandStack.size()!=0){
-
-            if (commandStack.peek() instanceof GenericCommand<?>) {
-
-                GenericCommand<URI> peek = (GenericCommand<URI>) commandStack.pop();
-
-                if (!uriList.contains(peek.getTarget())) {
-                    temp.push(peek);
-                }
-            }
-
-            else{
-                CommandSet<URI> peek = (CommandSet<URI>) commandStack.pop();
-                CommandSet<URI> rep=new CommandSet<>();
-                if (peek!=null) for(GenericCommand<URI> gc:peek){
-                    if (!(uriList.contains(gc.getTarget()))){
-                        rep.addCommand(gc);
-                    }
-                }
-                if (rep.size()!=0) temp.push(rep);
-            }
-
-        }
-        while (temp.size()!=0){
-            this.commandStack.push(temp.pop());
-        }
-        return uriList;
-    }
+//    private List<URI> removeFromStackPastLimit(List<Document> docList) {
+//        List<URI> uriList=new ArrayList<>();
+//
+//        for (Document doc : docList){
+//            uriList.add(doc.getKey());
+//        }
+//
+//        StackImpl<Undoable> temp= new StackImpl<>();
+//
+//        while(commandStack.size()!=0){
+//
+//            if (commandStack.peek() instanceof GenericCommand<?>) {
+//
+//                GenericCommand<URI> peek = (GenericCommand<URI>) commandStack.pop();
+//
+//                if (!uriList.contains(peek.getTarget())) {
+//                    temp.push(peek);
+//                }
+//            }
+//
+//            else{
+//                CommandSet<URI> peek = (CommandSet<URI>) commandStack.pop();
+//                CommandSet<URI> rep=new CommandSet<>();
+//                if (peek!=null) for(GenericCommand<URI> gc:peek){
+//                    if (!(uriList.contains(gc.getTarget()))){
+//                        rep.addCommand(gc);
+//                    }
+//                }
+//                if (rep.size()!=0) temp.push(rep);
+//            }
+//
+//        }
+//        while (temp.size()!=0){
+//            this.commandStack.push(temp.pop());
+//        }
+//        return uriList;
+//    }
 
     @Override
     public void setMaxDocumentBytes(int limit) {
         if(limit<1) throw new IllegalArgumentException();
+
         this.maxDocumentBytes=limit;
-        int b=this.byteCount;
-        List<Document> docList=new ArrayList<>();
-        while (b>limit) {
-            DocSub d = documentMinHeap.remove();
-            if (d.getDoc().getDocumentBinaryData() != null) b -= d.getDoc().getDocumentBinaryData().length;
-            if (d.getDoc().getDocumentTxt() != null) b -= d.getDoc().getDocumentTxt().getBytes().length;
-            docList.add(d.getDoc());
-        }
 
-        removeFromStackPastLimit(docList);
-
-        for(Document d: docList) {
-
-            if (d.getWords() != null) {
-                for (String word : d.getWords()) {
-                    documentTrie.delete(word, new DocSub(d.getKey()));
+        if (this.byteCount>limit){
+            int p=this.byteCount-limit;
+            List<Document> docList= new ArrayList<>();
+            while(this.byteCount>limit){
+                try {
+                    Document d= documentMinHeap.remove().getDoc();
+                    this.docCount--;
+                    this.byteCount-=getDocBytes(d);
+                    store.moveToDisk(d.getKey());
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
             }
 
-            if (this.store.get(d.getKey()) != null) this.store.put(d.getKey(), null);
         }
 
     }

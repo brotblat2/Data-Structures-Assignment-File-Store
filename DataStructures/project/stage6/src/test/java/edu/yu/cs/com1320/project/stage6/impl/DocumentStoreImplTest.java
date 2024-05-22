@@ -840,7 +840,7 @@ class DocumentStoreImplTest {
         assertEquals(dstore.get(uriT).getDocumentTxt(), s);
         assertEquals(1,dstore.search("hello").size());
         dstore.setMaxDocumentCount(1);
-        assertEquals(1,dstore.searchByPrefix("").size());
+        assertEquals(4,dstore.searchByPrefix("").size());
         dstore.undo();
         assertNull(dstore.get(uriT));
         assertEquals(0,dstore.search("hello").size());
