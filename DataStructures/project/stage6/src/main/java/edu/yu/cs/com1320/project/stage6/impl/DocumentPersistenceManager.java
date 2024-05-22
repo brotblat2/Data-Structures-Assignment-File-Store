@@ -36,11 +36,12 @@ public class DocumentPersistenceManager implements PersistenceManager<URI, Docum
             }
 
             JsonObject wordMapObject = new JsonObject();
-            for (Map.Entry<String, Integer> entry : doc.getWordMap().entrySet()) {
-                wordMapObject.addProperty(entry.getKey(), entry.getValue());
+            if (doc.getWordMap()!=null) {
+                for (Map.Entry<String, Integer> entry : doc.getWordMap().entrySet()) {
+                    wordMapObject.addProperty(entry.getKey(), entry.getValue());
+                }
+                jsonObject.add("WordMap", wordMapObject);
             }
-            jsonObject.add("WordMap", wordMapObject);
-
             JsonObject metadataObject = new JsonObject();
             for (Map.Entry<String, String> entry : doc.getMetadata().entrySet()) {
                 metadataObject.addProperty(entry.getKey(), entry.getValue());

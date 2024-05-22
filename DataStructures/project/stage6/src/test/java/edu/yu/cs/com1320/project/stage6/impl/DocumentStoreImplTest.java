@@ -8,6 +8,8 @@ import org.junit.jupiter.api.Test;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -124,11 +126,11 @@ class DocumentStoreImplTest {
 
 
 
-        dstore.setMaxDocumentCount(1);
 
 
         assertEquals(1, dstore.search("the").size());
-        assertNull(dstore.get(url));
+
+        assertFalse(Files.deleteIfExists(Path.of((dstore.search("the").get(0).getKey().toString().substring(7)) + ".json")));
     }
     @Test
     void checkHeapOrder3() throws IOException {
@@ -150,6 +152,10 @@ class DocumentStoreImplTest {
         setUp();
         dstore.setMaxDocumentCount(2);
         dstore.undo();
+
+        String s=uri.toString().substring(7);
+        s+=".json";
+        assertTrue(Files.deleteIfExists(Path.of(s)));
 
         assertNull(dstore.get(uri));
         assertNotNull(dstore.get(uri1));
