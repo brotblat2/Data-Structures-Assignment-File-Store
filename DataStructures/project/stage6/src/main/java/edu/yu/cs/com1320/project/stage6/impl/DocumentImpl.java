@@ -17,16 +17,16 @@ public class DocumentImpl implements Document {
 
 
 
-    public DocumentImpl(URI uri, String txt){
-        if (uri==null || uri.toString().isEmpty() || txt==null || txt.isEmpty()){
-            throw new IllegalArgumentException("Empty or null URI or value");
-        }
-        this.uri=uri;
-        this.txt=txt;
-        this.meta= new HashMap<>();
-        this.wordCounts=this.wordCountTable();
-        this.lastUseTime=System.nanoTime();
-    }
+//    public DocumentImpl(URI uri, String txt){
+//        if (uri==null || uri.toString().isEmpty() || txt==null || txt.isEmpty()){
+//            throw new IllegalArgumentException("Empty or null URI or value");
+//        }
+//        this.uri=uri;
+//        this.txt=txt;
+//        this.meta= new HashMap<>();
+//        this.wordCounts=this.wordCountTable();
+//        this.lastUseTime=System.nanoTime();
+//    }
 
     public DocumentImpl(URI uri, String txt, Map<String, Integer> wordCountMap){
         if (uri==null || uri.toString().isEmpty() || txt==null || txt.isEmpty()){
@@ -35,8 +35,8 @@ public class DocumentImpl implements Document {
         this.uri=uri;
         this.txt=txt;
         this.meta= new HashMap<>();
-        if (wordCountMap==null) this.wordCounts=this.wordCountTable();
 
+        if (wordCountMap==null) this.wordCounts=this.wordCountTable();
         else this.wordCounts=wordCountMap;
 
         this.lastUseTime=System.nanoTime();

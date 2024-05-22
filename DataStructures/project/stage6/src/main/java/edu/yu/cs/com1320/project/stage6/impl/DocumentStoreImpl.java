@@ -121,7 +121,7 @@ public class DocumentStoreImpl implements DocumentStore {
             throw new IllegalArgumentException("Inputted key is empty");
         }
 
-        String data= this.store.get(uri).setMetadataValue(key, value);
+        String data= this.get(uri).setMetadataValue(key, value);
         addMetaNode(metaMap, key, new MetaNode(key,value,uri));
         this.store.get(uri).setLastUseTime(System.nanoTime());
         updateHeapAndBtreeStorage(this.store.get(uri));
@@ -248,7 +248,7 @@ public class DocumentStoreImpl implements DocumentStore {
         else {
             byte[] b = input.readAllBytes();
             String s = new String(b);
-            DocumentImpl d = new DocumentImpl(uri, s);
+            DocumentImpl d = new DocumentImpl(uri, s, null);
 
             //let's fix this
             Document oldDoc =this.get(uri);
@@ -290,12 +290,7 @@ public class DocumentStoreImpl implements DocumentStore {
             Consumer<URI> u = (squash) -> {
                 Document newDoc=d;
                 //this first if else if is just making sure that we are under the cap
-                if ((oldDoc!=null) && oldDoc.getDocumentBinaryData()!=null && oldDoc.getDocumentBinaryData().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
-                else if ( (oldDoc!=null) && oldDoc.getDocumentTxt()!=null && oldDoc.getDocumentTxt().getBytes().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
-
-                else {
-
-                    deleteFromHeap(newDoc);
+                   deleteFromHeap(newDoc);
 
                     for (String word : newDoc.getWords()) {
                         documentTrie.delete(word, ds);
@@ -328,7 +323,7 @@ public class DocumentStoreImpl implements DocumentStore {
                             addMetaNode(metaMap, key, new MetaNode(key,oldDoc.getMetadataValue(key),uri));
                     }
 
-                }
+
 
 
             };
@@ -361,9 +356,6 @@ public class DocumentStoreImpl implements DocumentStore {
         updateHeapAndBtreeStorage(newDoc);
 
         Consumer <URI> u = (squash) -> {
-            if (oldDoc!=null && oldDoc.getDocumentBinaryData()!=null && oldDoc.getDocumentBinaryData().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
-            else if (oldDoc!=null && oldDoc.getDocumentTxt()!=null && oldDoc.getDocumentTxt().getBytes().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
-            else {
                 deleteFromHeap(newDoc);
 
                 for (String key: newDoc.getMetadata().keySet())
@@ -384,7 +376,7 @@ public class DocumentStoreImpl implements DocumentStore {
                         documentTrie.put(word, ods);
                     }
                 }
-            }
+
         };
         GenericCommand<URI> com=new GenericCommand<>(uri, u);
         commandStack.push(com);
@@ -439,9 +431,6 @@ public class DocumentStoreImpl implements DocumentStore {
 
     private GenericCommand<URI> undoDeleteCommand(URI url, Document doc) {
         Consumer<URI> u = (squash) -> {
-            if (doc.getDocumentBinaryData()!=null && doc.getDocumentBinaryData().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
-            else if (doc.getDocumentTxt()!=null && doc.getDocumentTxt().getBytes().length>this.maxDocumentBytes && this.maxDocumentBytes>0);
-            else {
                 this.store.put(url, doc);
                 DocSub docSub=new DocSub(doc);
                 this.store.get(url).setLastUseTime(System.nanoTime());
@@ -454,7 +443,7 @@ public class DocumentStoreImpl implements DocumentStore {
                     this.documentTrie.put(word, docSub);
                 }
 
-            }
+
         };
 
         GenericCommand<URI> com = new GenericCommand<>(url, u);

@@ -4,7 +4,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Set;
 
-import edu.yu.cs.com1320.project.impl.HashTableImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -17,7 +16,7 @@ class DocumentImplTest {
         URI uri = URI.create("http://example.com");
         String s=null;
         assertThrows(IllegalArgumentException.class,()->{
-            DocumentImpl doc= new DocumentImpl(uri, s);
+            DocumentImpl doc= new DocumentImpl(uri, s, null);
         });
     }
     @Test
@@ -25,14 +24,14 @@ class DocumentImplTest {
         URI uri = URI.create("");
         String s="hello";
         assertThrows(IllegalArgumentException.class,()->{
-            DocumentImpl doc= new DocumentImpl(uri, s);
+            DocumentImpl doc= new DocumentImpl(uri, s, null);
         });
     }
     @Test
     void ConstructorCheckTXT() {
         URI uri = URI.create("http://example.com");
         String s= "hello";
-        DocumentImpl doc= new DocumentImpl(uri, s);
+        DocumentImpl doc= new DocumentImpl(uri, s, null);
         assertEquals(s, doc.getDocumentTxt());
     }
     @Test
@@ -46,7 +45,7 @@ class DocumentImplTest {
     void setMetadataValueNull() {
         URI uri = URI.create("http://example.com");
         String s= "hello";
-        DocumentImpl doc= new DocumentImpl(uri, s);
+        DocumentImpl doc= new DocumentImpl(uri, s, null);
         String p=null;
         assertThrows(IllegalArgumentException.class,()->{
             doc.setMetadataValue(p , "okey dokey");
@@ -57,7 +56,7 @@ class DocumentImplTest {
     void setMetadataValueEmpty() {
         URI uri = URI.create("http://example.com");
         String s= "hello";
-        DocumentImpl doc= new DocumentImpl(uri, s);
+        DocumentImpl doc= new DocumentImpl(uri, s, null);
         String p="";
         assertThrows(IllegalArgumentException.class,()->{
             doc.setMetadataValue(p , "okey dokey");
@@ -68,7 +67,7 @@ class DocumentImplTest {
     void setMetadataValueWorks() {
         URI uri = URI.create("http://example.com");
         String s= "hello";
-        DocumentImpl doc= new DocumentImpl(uri, s);
+        DocumentImpl doc= new DocumentImpl(uri, s, null);
         String p="key";
         doc.setMetadataValue(p , "okey dokey");
         assertEquals(doc.getMetadataValue(p), "okey dokey");
@@ -78,7 +77,7 @@ class DocumentImplTest {
     void setMetadataValueReturnsStrings() {
         URI uri = URI.create("http://example.com");
         String s= "hello";
-        DocumentImpl doc= new DocumentImpl(uri, s);
+        DocumentImpl doc= new DocumentImpl(uri, s, null);
         String p="key";
         doc.setMetadataValue(p , "okey dokey");
         String old= doc.setMetadataValue(p, "new and improved");
@@ -90,7 +89,7 @@ class DocumentImplTest {
     void getMetadataCheck() {
         URI uri = URI.create("http://example.com");
         String s= "hello";
-        DocumentImpl doc= new DocumentImpl(uri, s);
+        DocumentImpl doc= new DocumentImpl(uri, s, null);
         doc.setMetadataValue("key1" , "okey dokey");
         doc.setMetadataValue("key2", "okey dokey");
 
@@ -103,7 +102,7 @@ class DocumentImplTest {
     void getKeyTest() {
         URI uri = URI.create("http://example.com");
         String s= "hello";
-        DocumentImpl doc= new DocumentImpl(uri, s);
+        DocumentImpl doc= new DocumentImpl(uri, s, null);
         assertEquals(doc.getKey(), uri);
     }
 
@@ -111,10 +110,10 @@ class DocumentImplTest {
     void testEqualsCheck() {
         URI uri = URI.create("http://example.com");
         String s= "hello";
-        DocumentImpl doc= new DocumentImpl(uri, s);
+        DocumentImpl doc= new DocumentImpl(uri,s, null);
         URI uri1 = URI.create("http://example.com");
         String s1= "hello";
-        DocumentImpl doc1= new DocumentImpl(uri1, s1);
+        DocumentImpl doc1= new DocumentImpl(uri1, s1, null);
         assertTrue(doc1.equals(doc));
     }
     DocumentImpl doc;
@@ -129,7 +128,7 @@ class DocumentImplTest {
                 " \n" +
                 "Abraham Lincoln \n" +
                 "November 19, 1863";
-        doc= new DocumentImpl(uri, GA);
+        doc= new DocumentImpl(uri, GA, null);
 
 
     }
