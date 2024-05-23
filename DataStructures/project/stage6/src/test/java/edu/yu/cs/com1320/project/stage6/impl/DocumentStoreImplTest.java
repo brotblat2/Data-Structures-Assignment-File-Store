@@ -157,11 +157,27 @@ class DocumentStoreImplTest {
         String s1 = "hey";
         byte[] b = {1, 2, 3, 4};
         byte[] b1 = {41, 42, 43, 44, 45};
-        ByteArrayInputStream stream = new ByteArrayInputStream(b);
+        ByteArrayInputStream stream = new ByteArrayInputStream(s.getBytes());
         ByteArrayInputStream stream1 = new ByteArrayInputStream(b1);
         DocumentStoreImpl dstore = new DocumentStoreImpl();
-        dstore.put(stream, uri, DocumentStore.DocumentFormat.BINARY);
+        dstore.put(stream, uri, DocumentStore.DocumentFormat.TXT);
         dstore.put(stream1, uri1, DocumentStore.DocumentFormat.BINARY);
+
+        URI uriT = URI.create("http://example/flying/fish.c/om");
+        String qs= "the hello";
+        byte[] qbytes = qs.getBytes();
+        ByteArrayInputStream qstream = new ByteArrayInputStream(qbytes);
+        dstore.put(qstream,uriT, DocumentStore.DocumentFormat.TXT );
+
+        URI uriT1 = URI.create("http://example/flying/skunk");
+        String qs1= "th biggest he";
+        byte[] qbytes1 = qs.getBytes();
+        ByteArrayInputStream qstream1 = new ByteArrayInputStream(qbytes1);
+        dstore.put(qstream1,uriT1, DocumentStore.DocumentFormat.TXT );
+        dstore.get(uri);
+        dstore.setMaxDocumentCount(1);
+        dstore.deleteAll("hello");
+
         URI uri2 = null;
         assertThrows(IllegalArgumentException.class, () -> {
             dstore.setMetadata(uri2, "key", "value");
@@ -824,25 +840,33 @@ class DocumentStoreImplTest {
     @Test
     void put() throws IOException {
         setUp();
-        URI uriT = URI.create("http://example/flyingfish.com");
+        URI uriT = URI.create("http://example/flying/fish.c/om");
         String s= "the hello";
         byte[] bytes = s.getBytes();
         ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
         dstore.put(stream,uriT, DocumentStore.DocumentFormat.TXT );
+
+        URI uriT1 = URI.create("http://example/flying/skunk");
+        String s1= "th biggest hello";
+        byte[] bytes1 = s.getBytes();
+        ByteArrayInputStream stream1 = new ByteArrayInputStream(bytes1);
+        dstore.put(stream1,uriT1, DocumentStore.DocumentFormat.TXT );
+
+
         assertEquals(dstore.get(uriT).getDocumentTxt(), s);
-        assertEquals(1,dstore.search("hello").size());
+        assertEquals(2,dstore.search("hello").size());
         dstore.get(uri);
         dstore.setMaxDocumentCount(1);
 
         dstore.delete(uriT);
-        assertEquals(0,dstore.search("hello").size());
+        assertEquals(1,dstore.search("hello").size());
 
         dstore.undo();
         dstore.get(uriT);
         dstore.get(uri);
 
 
-        assertEquals(4,dstore.searchByPrefix("").size());
+        assertEquals(5,dstore.searchByPrefix("").size());
         assertTrue(dstore.delete(uriT));
         assertNull(dstore.get(uriT));
     }

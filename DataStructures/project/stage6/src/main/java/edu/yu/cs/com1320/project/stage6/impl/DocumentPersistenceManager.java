@@ -126,12 +126,13 @@ public class DocumentPersistenceManager implements PersistenceManager<URI, Docum
             writer.write(json);
             writer.close();
         }
+
         else {
             String dirpath = path.substring(0, path.lastIndexOf("/"));
             dirpath = dirpath.replace("/", File.separator);
             File file;
             if (baseDir != null) file = new File(baseDir, dirpath);
-            else file = new File(path);
+            else file = new File(dirpath);
             file.mkdirs();
             File jsonFile = new File(file, path.substring(path.lastIndexOf("/")+1));
             FileWriter writer = new FileWriter(jsonFile);

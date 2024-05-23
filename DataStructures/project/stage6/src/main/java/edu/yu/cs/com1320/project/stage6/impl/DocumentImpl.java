@@ -214,6 +214,7 @@ public class DocumentImpl implements Document {
 
     @Override
     public boolean equals(Object o){
+        if (o==null) return false;
         if (this.hashCode()==o.hashCode()){
             return true;
         }
