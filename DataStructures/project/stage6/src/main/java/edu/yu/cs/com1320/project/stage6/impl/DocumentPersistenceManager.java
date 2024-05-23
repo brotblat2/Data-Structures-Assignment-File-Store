@@ -113,16 +113,32 @@ public class DocumentPersistenceManager implements PersistenceManager<URI, Docum
     public void serialize(URI uri, Document doc) throws IOException {
         String json= gson.toJson(doc);
         String path= uri.toString().substring(7);
-        path=path.replace("/", File.separator);
+        String[] dirs= path.split("/");
         path+=".json";
 
-        File file;
-        if (baseDir!=null) file = new File(baseDir, path) ;
-        else file = new File(path);
-        FileWriter writer = new FileWriter(file);
-        writer.write(json);
-        writer.close();
-     }
+
+        if (dirs.length==1) {
+            path=path.replace("/", File.separator);
+            File file;
+            if (baseDir != null) file = new File(baseDir, path);
+            else file = new File(path);
+            FileWriter writer = new FileWriter(file);
+            writer.write(json);
+            writer.close();
+        }
+        else {
+            String dirpath = path.substring(0, path.lastIndexOf("/"));
+            dirpath = dirpath.replace("/", File.separator);
+            File file;
+            if (baseDir != null) file = new File(baseDir, dirpath);
+            else file = new File(path);
+            file.mkdirs();
+            File jsonFile = new File(file, path.substring(path.lastIndexOf("/")+1));
+            FileWriter writer = new FileWriter(jsonFile);
+            writer.write(json);
+            writer.close();
+        }
+    }
 
 
     @Override//UP TO HERE: THINGS TO DO: A) Fix this up, look into reading files B) Make the base directory constructor to the document class. C) Get rid of the old document constructor D) Fix up the BTREE and figure out how to make it useful for this assignment!
@@ -150,6 +166,7 @@ public class DocumentPersistenceManager implements PersistenceManager<URI, Docum
         String pathString= uri.toString().substring(7);
         pathString+=".json";
         pathString=pathString.replace("/", File.separator);
+
         if (baseDir!=null){
             Path baseDirPath = Paths.get(baseDir.getAbsolutePath(), pathString);
             return Files.deleteIfExists(baseDirPath);
