@@ -165,13 +165,29 @@ public class DocumentPersistenceManager implements PersistenceManager<URI, Docum
     public boolean delete(URI uri) throws IOException {
         String pathString= uri.toString().substring(7);
         pathString+=".json";
+        String[] dirs= pathString.split("/");
         pathString=pathString.replace("/", File.separator);
 
+        boolean returnValue;
         if (baseDir!=null){
             Path baseDirPath = Paths.get(baseDir.getAbsolutePath(), pathString);
-            return Files.deleteIfExists(baseDirPath);
+            returnValue= Files.deleteIfExists(baseDirPath);
         }
-        else return Files.deleteIfExists(Paths.get(pathString));
+        else returnValue= Files.deleteIfExists(Paths.get(pathString));
+
+       File file;
+        if (returnValue){
+            while(pathString.contains(File.separator)){
+                pathString=pathString.substring(0, pathString.lastIndexOf(File.separator));
+
+                if (baseDir != null) file = new File(baseDir, pathString);
+                else file = new File(pathString);
+                if (file!=baseDir && file.isDirectory() &&  file.listFiles().length==0)
+                    file.delete();
+                else break;
+            }
+        }
+        return returnValue;
     }
 
 }
